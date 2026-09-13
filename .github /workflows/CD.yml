@@ -31,13 +31,13 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           key: ${{ secrets.SSH_KEY }}
           source: "build/libs/*.jar" # Github Actions 워크플로우가 실행되는 runner환경에서의 경로
-          target: "/home/ec2-user/GudYeeDay/" # 원격 서버 파일 경로
+          target: "/home/ubuntu/GudYeeDay/" # 원격 서버 파일 경로
 
       - name: docker compose up -> make (mysql,spring, nginx)
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
-          username: ec2-user
+          username: ubuntu
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/GudYeeDay
