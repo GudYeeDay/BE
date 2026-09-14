@@ -1,6 +1,7 @@
 package org.example.gudyeeday.config;
 
 import lombok.RequiredArgsConstructor;
+import org.example.gudyeeday.config.jwt.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -25,6 +26,8 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -43,7 +46,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 인증 없이 허용
                         .requestMatchers(
-                                "/**",
+                                "/api/auth/signup",
+                                "/api/auth/login",
+                                "/api/auth/login/google",
+                                "/api/auth/reissue",
+                                "/api/auth/email/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api/healthCheck"
@@ -53,12 +60,12 @@ public class SecurityConfig {
 //                        .requestMatchers(HttpMethod.GET, "/api/v1/sessions/**").permitAll()
 
                         // 기타 모든 요청은 인증 필요
-//                        .anyRequest().authenticated()
+                        .anyRequest().authenticated()
                 )
-//                .addFilterBefore(
-//                        jwtAuthenticationFilter,
-//                        UsernamePasswordAuthenticationFilter.class
-//                )
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
                 .build();
     }
 
