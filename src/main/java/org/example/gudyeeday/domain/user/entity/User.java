@@ -91,4 +91,8 @@ public class User extends BaseEntity {
     public boolean hasPassword() {
         return this.password != null && !this.password.isBlank();
     }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
 }
