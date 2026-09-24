@@ -82,4 +82,13 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.onSuccess(userService.googleLogin(request)));
     }
 
+    @Operation(
+            summary = "비밀번호 재설정",
+            description = "")
+    @PostMapping("/passwordReset")
+    public ResponseEntity<ApiResponse<String>> passwordReset(@Valid @RequestBody PasswordResetRequest request){
+        userService.passwordReset(request);
+     return ResponseEntity.ok(ApiResponse.onSuccess("비밀번호가 성공적으로 재설정되었습니다."));
+    }
+
 }

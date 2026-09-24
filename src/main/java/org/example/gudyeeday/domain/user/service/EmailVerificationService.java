@@ -45,9 +45,9 @@ public class EmailVerificationService {
     public EmailCodeSendResponse sendVerificationCode(EmailCodeSendRequest request) {
         String email = normalizeEmail(request.email());
 
-        if (userRepository.existsByEmail(email)) {
-            throw new CustomException(AuthErrorCode.DUPLICATE_EMAIL);
-        }
+//        if (userRepository.existsByEmail(email)) {
+//            throw new CustomException(AuthErrorCode.DUPLICATE_EMAIL);
+//        }
 
         EmailVerification verification = emailVerificationRepository.findByEmail(email)
                 .orElse(null);

@@ -51,6 +51,7 @@ public class SecurityConfig {
                                 "/api/auth/login/google",
                                 "/api/auth/reissue",
                                 "/api/auth/email/**",
+                                "/api/auth/passwordReset",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api/healthCheck"

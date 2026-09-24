@@ -5,16 +5,15 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.exception.CustomException;
 import org.example.gudyeeday.config.jwt.JwtTokenProvider;
-import org.example.gudyeeday.domain.user.dto.request.GoogleLoginRequest;
-import org.example.gudyeeday.domain.user.dto.request.LoginRequest;
-import org.example.gudyeeday.domain.user.dto.request.SignupRequest;
-import org.example.gudyeeday.domain.user.dto.request.TokenRefreshRequest;
+import org.example.gudyeeday.domain.user.dto.request.*;
+import org.example.gudyeeday.domain.user.dto.response.EmailVerificationResponse;
 import org.example.gudyeeday.domain.user.dto.response.GoogleLoginResponse;
 import org.example.gudyeeday.domain.user.dto.response.TokenRefreshResponse;
 import org.example.gudyeeday.domain.user.dto.response.UserResponse;
 import org.example.gudyeeday.domain.user.entity.EmailVerification;
 import org.example.gudyeeday.domain.user.entity.RefreshToken;
 import org.example.gudyeeday.domain.user.entity.User;
+import org.example.gudyeeday.domain.user.enums.Provider;
 import org.example.gudyeeday.domain.user.exception.AuthErrorCode;
 import org.example.gudyeeday.domain.user.repository.EmailVerificationRepository;
 import org.example.gudyeeday.domain.user.repository.RefreshTokenRepository;
@@ -32,6 +31,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +44,7 @@ public class UserService {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailVerificationRepository emailVerificationRepository;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    private final EmailVerificationService emailVerificationService;
 
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -271,6 +272,31 @@ public class UserService {
         TokenRefreshResponse tokenResponse = issueTokens(user);
 
         return GoogleLoginResponse.of(user,tokenResponse, isNewUser);
+    }
+
+    @Transactional
+    public void passwordReset(PasswordResetRequest request) {
+        if (!request.password().equals(request.passwordCheck())) {
+            throw new CustomException(AuthErrorCode.PASSWORD_MISMATCH);
+        }
+
+        String email = request.emailVerificationRequest().email();
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
+
+        if(user.getProvider()== Provider.GOOGLE){
+            throw new CustomException(AuthErrorCode.SOCIAL_LOGIN_REQUIRED);
+        }
+
+        EmailVerificationResponse response = emailVerificationService.verifyCode(request.emailVerificationRequest());
+        if (!response.verified()) {
+            throw new CustomException(AuthErrorCode.INVALID_VERIFICATION_CODE);
+        }
+
+        user.updatePassword(passwordEncoder.encode(request.password()));
+
+        user.getRefreshTokens().clear();
+
+        emailVerificationRepository.deleteByEmail(email);
     }
 
     private String hashToken(String token) {
