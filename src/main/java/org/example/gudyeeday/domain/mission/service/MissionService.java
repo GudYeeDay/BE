@@ -41,7 +41,7 @@ public class MissionService {
     private final UserRepository userRepository;
     private final Clock clock;
 
-    // 오늘(KST) 요일/계절에 맞는 미션 중 보관함에 없고 진행중이 아닌 미션을 랜덤으로 3개 추천
+    // 오늘(KST) 요일/계절에 맞는 미션 중 보관함에 없고 진행/완료 기록이 없는 기본 제공 미션을 랜덤으로 3개 추천
     public List<MissionRecommendResponse> recommendMissions(String email) {
         User user = getUser(email);
         LocalDate today = LocalDate.now(clock);
@@ -60,20 +60,27 @@ public class MissionService {
                 .toList();
     }
 
-    // 추천 미션을 보관함에 저장
+    // 추천 미션을 보관함에 저장 (삭제했던 미션이면 복구)
     @Transactional
     public MissionBookmarkResponse bookmarkMission(String email, Long missionId) {
         User user = getUser(email);
-        Mission mission = getMission(missionId);
+        Mission mission = getMission(user, missionId);
+        LocalDateTime now = LocalDateTime.now(clock);
 
-        if (missionBookmarkRepository.existsByUserIdAndMissionId(user.getId(), mission.getId())) {
-            throw new CustomException(MissionErrorCode.ALREADY_BOOKMARKED);
+        MissionBookmark existing = missionBookmarkRepository.findByUserIdAndMissionId(user.getId(), mission.getId())
+                .orElse(null);
+        if (existing != null) {
+            if (!existing.isDeleted()) {
+                throw new CustomException(MissionErrorCode.ALREADY_BOOKMARKED);
+            }
+            existing.restore(now);
+            return MissionBookmarkResponse.from(existing);
         }
 
         MissionBookmark bookmark;
         try {
             bookmark = missionBookmarkRepository.save(
-                    MissionBookmark.createMissionBookmark(user, mission)
+                    MissionBookmark.createMissionBookmark(user, mission, now)
             );
         } catch (DataIntegrityViolationException e) {
             // 동시 요청으로 그 사이에 같은 미션이 저장된 경우
@@ -83,15 +90,15 @@ public class MissionService {
         return MissionBookmarkResponse.from(bookmark);
     }
 
-    // 보관함 저장 해제
+    // 보관함 저장 해제 (소프트 삭제)
     @Transactional
     public void unbookmarkMission(String email, Long missionId) {
         User user = getUser(email);
 
-        MissionBookmark bookmark = missionBookmarkRepository.findByUserIdAndMissionId(user.getId(), missionId)
+        MissionBookmark bookmark = missionBookmarkRepository.findByUserIdAndMissionIdAndDeletedAtIsNull(user.getId(), missionId)
                 .orElseThrow(() -> new CustomException(MissionErrorCode.BOOKMARK_NOT_FOUND));
 
-        missionBookmarkRepository.delete(bookmark);
+        bookmark.delete(LocalDateTime.now(clock));
     }
 
     // 미션 시작 (한 번에 하나만 진행 가능)
@@ -100,7 +107,7 @@ public class MissionService {
     public InProgressMissionResponse startMission(String email, Long missionId) {
         User user = userRepository.findByEmailForUpdate(email)
                 .orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
-        Mission mission = getMission(missionId);
+        Mission mission = getMission(user, missionId);
 
         if (userMissionRepository.existsByUserIdAndStatus(user.getId(), UserMissionStatus.IN_PROGRESS)) {
             throw new CustomException(MissionErrorCode.MISSION_ALREADY_IN_PROGRESS);
@@ -118,12 +125,19 @@ public class MissionService {
     }
 
     // 진행중인 미션 완료
+    // 보관함에 없던 미션은 보관함에 저장해 완료한 미션 목록에 나오게 함 (보관함에서 삭제한 미션은 삭제 상태 유지)
     @Transactional
     public InProgressMissionResponse completeInProgressMission(String email) {
         User user = getUser(email);
         UserMission userMission = getInProgressUserMission(user);
+        LocalDateTime now = LocalDateTime.now(clock);
 
-        userMission.complete(LocalDateTime.now(clock));
+        userMission.complete(now);
+
+        Mission mission = userMission.getMission();
+        if (missionBookmarkRepository.findByUserIdAndMissionId(user.getId(), mission.getId()).isEmpty()) {
+            missionBookmarkRepository.save(MissionBookmark.createMissionBookmark(user, mission, now));
+        }
 
         return InProgressMissionResponse.from(userMission);
     }
@@ -140,8 +154,10 @@ public class MissionService {
                 .orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
     }
 
-    private Mission getMission(Long missionId) {
+    // 다른 사용자가 만든 나만의 굳이 미션은 존재하지 않는 미션으로 처리
+    private Mission getMission(User user, Long missionId) {
         return missionRepository.findById(missionId)
+                .filter(mission -> mission.isAccessibleBy(user))
                 .orElseThrow(() -> new CustomException(MissionErrorCode.MISSION_NOT_FOUND));
     }
 

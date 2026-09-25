@@ -86,7 +86,8 @@ class MissionServiceTest {
 
     @Test
     void 이미_저장한_미션을_저장하면_ALREADY_BOOKMARKED() {
-        when(missionBookmarkRepository.existsByUserIdAndMissionId(1L, 10L)).thenReturn(true);
+        when(missionBookmarkRepository.findByUserIdAndMissionId(1L, 10L))
+                .thenReturn(Optional.of(MissionBookmark.createMissionBookmark(user, mission, LocalDateTime.now())));
 
         assertThatThrownBy(() -> missionService.bookmarkMission(EMAIL, 10L))
                 .isInstanceOf(CustomException.class)
@@ -96,7 +97,7 @@ class MissionServiceTest {
 
     @Test
     void 동시_저장으로_유니크_제약에_걸려도_ALREADY_BOOKMARKED() {
-        when(missionBookmarkRepository.existsByUserIdAndMissionId(1L, 10L)).thenReturn(false);
+        when(missionBookmarkRepository.findByUserIdAndMissionId(1L, 10L)).thenReturn(Optional.empty());
         when(missionBookmarkRepository.save(any(MissionBookmark.class)))
                 .thenThrow(new DataIntegrityViolationException("Duplicate entry"));
 
@@ -106,8 +107,32 @@ class MissionServiceTest {
     }
 
     @Test
+    void 삭제했던_미션을_다시_저장하면_복구되고_저장시각이_갱신된다() {
+        MissionBookmark deleted = MissionBookmark.createMissionBookmark(user, mission, LocalDateTime.of(2026, 8, 1, 9, 0));
+        deleted.delete(LocalDateTime.of(2026, 8, 2, 9, 0));
+        when(missionBookmarkRepository.findByUserIdAndMissionId(1L, 10L)).thenReturn(Optional.of(deleted));
+
+        missionService.bookmarkMission(EMAIL, 10L);
+
+        assertThat(deleted.isDeleted()).isFalse();
+        assertThat(deleted.getSavedAt()).isEqualTo(LocalDateTime.of(2026, 9, 25, 10, 0));
+        verify(missionBookmarkRepository, never()).save(any());
+    }
+
+    @Test
+    void 저장_해제는_소프트_삭제한다() {
+        MissionBookmark bookmark = MissionBookmark.createMissionBookmark(user, mission, LocalDateTime.of(2026, 8, 1, 9, 0));
+        when(missionBookmarkRepository.findByUserIdAndMissionIdAndDeletedAtIsNull(1L, 10L)).thenReturn(Optional.of(bookmark));
+
+        missionService.unbookmarkMission(EMAIL, 10L);
+
+        assertThat(bookmark.getDeletedAt()).isEqualTo(LocalDateTime.of(2026, 9, 25, 10, 0));
+        verify(missionBookmarkRepository, never()).delete(any());
+    }
+
+    @Test
     void 저장하지_않은_미션을_해제하면_BOOKMARK_NOT_FOUND() {
-        when(missionBookmarkRepository.findByUserIdAndMissionId(1L, 10L)).thenReturn(Optional.empty());
+        when(missionBookmarkRepository.findByUserIdAndMissionIdAndDeletedAtIsNull(1L, 10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> missionService.unbookmarkMission(EMAIL, 10L))
                 .isInstanceOf(CustomException.class)
@@ -146,6 +171,32 @@ class MissionServiceTest {
     }
 
     @Test
+    void 다른_사용자가_만든_나만의_미션은_시작하거나_저장할_수_없다() {
+        User other = User.createSocialUser("other@test.com", "다른사용자", "google-2");
+        ReflectionTestUtils.setField(other, "id", 2L);
+        Mission othersCustom = Mission.createCustomMission(other, "남의 미션", "설명");
+        ReflectionTestUtils.setField(othersCustom, "id", 20L);
+        when(missionRepository.findById(20L)).thenReturn(Optional.of(othersCustom));
+
+        assertThatThrownBy(() -> missionService.startMission(EMAIL, 20L))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(MissionErrorCode.MISSION_NOT_FOUND);
+        assertThatThrownBy(() -> missionService.bookmarkMission(EMAIL, 20L))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(MissionErrorCode.MISSION_NOT_FOUND);
+    }
+
+    @Test
+    void 내가_만든_나만의_미션은_시작할_수_있다() {
+        Mission myCustom = Mission.createCustomMission(user, "내 미션", "설명");
+        ReflectionTestUtils.setField(myCustom, "id", 21L);
+        when(missionRepository.findById(21L)).thenReturn(Optional.of(myCustom));
+        when(userMissionRepository.save(any(UserMission.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(missionService.startMission(EMAIL, 21L).missionId()).isEqualTo(21L);
+    }
+
+    @Test
     void 미션을_완료하면_상태와_완료시각이_기록된다() {
         UserMission userMission = UserMission.startMission(user, mission);
         when(userMissionRepository.findByUserIdAndStatus(1L, UserMissionStatus.IN_PROGRESS)).thenReturn(Optional.of(userMission));
@@ -154,6 +205,32 @@ class MissionServiceTest {
 
         assertThat(userMission.getStatus()).isEqualTo(UserMissionStatus.COMPLETED);
         assertThat(userMission.getCompletedAt()).isEqualTo(LocalDateTime.of(2026, 9, 25, 10, 0));
+    }
+
+    @Test
+    void 보관함에_없던_미션을_완료하면_보관함에_저장된다() {
+        UserMission userMission = UserMission.startMission(user, mission);
+        when(userMissionRepository.findByUserIdAndStatus(1L, UserMissionStatus.IN_PROGRESS)).thenReturn(Optional.of(userMission));
+        when(missionBookmarkRepository.findByUserIdAndMissionId(1L, 10L)).thenReturn(Optional.empty());
+
+        missionService.completeInProgressMission(EMAIL);
+
+        verify(missionBookmarkRepository).save(argThat(b -> b.getMission() == mission
+                && b.getSavedAt().equals(LocalDateTime.of(2026, 9, 25, 10, 0))));
+    }
+
+    @Test
+    void 보관함에_있거나_보관함에서_삭제한_미션을_완료하면_보관함은_그대로다() {
+        MissionBookmark deleted = MissionBookmark.createMissionBookmark(user, mission, LocalDateTime.of(2026, 8, 1, 9, 0));
+        deleted.delete(LocalDateTime.of(2026, 8, 2, 9, 0));
+        UserMission userMission = UserMission.startMission(user, mission);
+        when(userMissionRepository.findByUserIdAndStatus(1L, UserMissionStatus.IN_PROGRESS)).thenReturn(Optional.of(userMission));
+        when(missionBookmarkRepository.findByUserIdAndMissionId(1L, 10L)).thenReturn(Optional.of(deleted));
+
+        missionService.completeInProgressMission(EMAIL);
+
+        assertThat(deleted.isDeleted()).isTrue();
+        verify(missionBookmarkRepository, never()).save(any());
     }
 
     @Test

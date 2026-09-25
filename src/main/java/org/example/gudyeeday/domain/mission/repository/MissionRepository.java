@@ -12,15 +12,16 @@ import java.util.List;
 
 public interface MissionRepository extends JpaRepository<Mission, Long> {
 
-    // 요일/계절 조건에 맞고, 사용자가 보관함에 저장하지 않았으며 진행중이거나 완료한 적 없는 미션
-    // (그만둔 미션은 진행 기록이 삭제되므로 다시 추천됨)
+    // 요일/계절 조건에 맞고, 사용자가 보관함에 저장하지 않았으며 진행중이거나 완료한 적 없는 기본 제공 미션
+    // (그만둔 미션은 진행 기록이 삭제되므로 다시 추천됨, 나만의 굳이 미션은 추천 대상 아님)
     @Query("""
             select m from Mission m
-            where m.dayType in :dayTypes
+            where m.creator is null
+              and m.dayType in :dayTypes
               and m.season in :seasons
               and not exists (
                   select 1 from MissionBookmark b
-                  where b.mission = m and b.user.id = :userId
+                  where b.mission = m and b.user.id = :userId and b.deletedAt is null
               )
               and not exists (
                   select 1 from UserMission um
