@@ -71,6 +71,14 @@ public class MissionController {
     }
 
     @Operation(
+            summary = "진행중인 미션 완료",
+            description = "진행중인 미션을 완료 상태로 바꿉니다. 완료 후에는 새 미션을 시작할 수 있습니다. 진행중인 미션이 없으면 404(MISSION4042)를 반환합니다.")
+    @PostMapping("/in-progress/complete")
+    public ResponseEntity<ApiResponse<InProgressMissionResponse>> completeInProgressMission(@AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.onSuccess(missionService.completeInProgressMission(userDetails.getUsername())));
+    }
+
+    @Operation(
             summary = "진행중인 미션 그만두기",
             description = "진행 기록을 삭제합니다. 진행중인 미션이 없으면 404(MISSION4042)를 반환합니다.")
     @DeleteMapping("/in-progress")

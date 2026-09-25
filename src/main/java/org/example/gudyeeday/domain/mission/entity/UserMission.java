@@ -6,6 +6,8 @@ import org.example.gudyeeday.common.entity.BaseEntity;
 import org.example.gudyeeday.domain.mission.enums.UserMissionStatus;
 import org.example.gudyeeday.domain.user.entity.User;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "user_mission")
 @Getter
@@ -31,6 +33,9 @@ public class UserMission extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private UserMissionStatus status;
 
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     // 미션 시작
     public static UserMission startMission(User user, Mission mission) {
         return UserMission.builder()
@@ -38,5 +43,11 @@ public class UserMission extends BaseEntity {
                 .mission(mission)
                 .status(UserMissionStatus.IN_PROGRESS)
                 .build();
+    }
+
+    // 미션 완료
+    public void complete(LocalDateTime completedAt) {
+        this.status = UserMissionStatus.COMPLETED;
+        this.completedAt = completedAt;
     }
 }

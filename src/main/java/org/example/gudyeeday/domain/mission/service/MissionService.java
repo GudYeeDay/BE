@@ -18,11 +18,13 @@ import org.example.gudyeeday.domain.mission.repository.UserMissionRepository;
 import org.example.gudyeeday.domain.user.entity.User;
 import org.example.gudyeeday.domain.user.exception.AuthErrorCode;
 import org.example.gudyeeday.domain.user.repository.UserRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -39,7 +41,7 @@ public class MissionService {
     private final UserRepository userRepository;
     private final Clock clock;
 
-    // 오늘(KST) 요일/계절에 맞는 미션 중 보관함에 없는 미션을 랜덤으로 3개 추천
+    // 오늘(KST) 요일/계절에 맞는 미션 중 보관함에 없고 진행중이 아닌 미션을 랜덤으로 3개 추천
     public List<MissionRecommendResponse> recommendMissions(String email) {
         User user = getUser(email);
         LocalDate today = LocalDate.now(clock);
@@ -68,9 +70,15 @@ public class MissionService {
             throw new CustomException(MissionErrorCode.ALREADY_BOOKMARKED);
         }
 
-        MissionBookmark bookmark = missionBookmarkRepository.save(
-                MissionBookmark.createMissionBookmark(user, mission)
-        );
+        MissionBookmark bookmark;
+        try {
+            bookmark = missionBookmarkRepository.save(
+                    MissionBookmark.createMissionBookmark(user, mission)
+            );
+        } catch (DataIntegrityViolationException e) {
+            // 동시 요청으로 그 사이에 같은 미션이 저장된 경우
+            throw new CustomException(MissionErrorCode.ALREADY_BOOKMARKED);
+        }
 
         return MissionBookmarkResponse.from(bookmark);
     }
@@ -107,6 +115,17 @@ public class MissionService {
     public InProgressMissionResponse getInProgressMission(String email) {
         User user = getUser(email);
         return InProgressMissionResponse.from(getInProgressUserMission(user));
+    }
+
+    // 진행중인 미션 완료
+    @Transactional
+    public InProgressMissionResponse completeInProgressMission(String email) {
+        User user = getUser(email);
+        UserMission userMission = getInProgressUserMission(user);
+
+        userMission.complete(LocalDateTime.now(clock));
+
+        return InProgressMissionResponse.from(userMission);
     }
 
     // 진행중인 미션 그만두기 (진행 기록 삭제)

@@ -1,9 +1,7 @@
 package org.example.gudyeeday.domain.mission.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.example.gudyeeday.common.entity.BaseEntity;
 import org.example.gudyeeday.domain.mission.enums.DayType;
 import org.example.gudyeeday.domain.mission.enums.Season;
@@ -12,6 +10,8 @@ import org.example.gudyeeday.domain.mission.enums.Season;
 @Table(name = "mission")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder(access = AccessLevel.PRIVATE)
 public class Mission extends BaseEntity {
 
     @Id
@@ -34,4 +34,13 @@ public class Mission extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "season", nullable = false, length = 20)
     private Season season;
+
+    public static Mission createMission(String title, String description, DayType dayType, Season season) {
+        return Mission.builder()
+                .title(title)
+                .description(description)
+                .dayType(dayType)
+                .season(season)
+                .build();
+    }
 }
