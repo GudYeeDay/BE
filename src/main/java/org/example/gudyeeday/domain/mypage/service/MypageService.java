@@ -2,6 +2,7 @@ package org.example.gudyeeday.domain.mypage.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.exception.CustomException;
+import org.example.gudyeeday.domain.mypage.dto.request.NameChangeRequest;
 import org.example.gudyeeday.domain.mypage.dto.response.ProfileResponse;
 import org.example.gudyeeday.domain.user.dto.request.SignupRequest;
 import org.example.gudyeeday.domain.user.dto.response.UserResponse;
@@ -31,6 +32,16 @@ public class MypageService {
         //아래에 위 3개 채우기
         return  new ProfileResponse(user.getName(), user.getDaysSinceSignup(), 30l, 20l, 10l);
 
+    }
+
+    @Transactional
+    public String changeName(String email, NameChangeRequest nameChangeRequest) {
+
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
+
+        user.updateName(nameChangeRequest.name());
+
+        return "닉네임이 성공적으로 변경되었습니다.";
     }
 
 }
