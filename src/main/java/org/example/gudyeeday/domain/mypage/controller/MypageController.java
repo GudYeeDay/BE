@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.response.ApiResponse;
 import org.example.gudyeeday.domain.mypage.dto.request.NameChangeRequest;
+import org.example.gudyeeday.domain.mypage.dto.request.PasswordChangeRequest;
 import org.example.gudyeeday.domain.mypage.dto.response.ProfileResponse;
 import org.example.gudyeeday.domain.mypage.service.MypageService;
 import org.example.gudyeeday.domain.user.dto.request.SignupRequest;
@@ -44,6 +45,17 @@ public class MypageController {
             @Valid @RequestBody NameChangeRequest nameChangeRequest
                                         ) {
         return ResponseEntity.ok(ApiResponse.onSuccess(mypageService.changeName(userDetails.getUsername(), nameChangeRequest)));
+    }
+
+    @Operation(
+            summary = "비밀번호 변경",
+            description = "")
+    @PutMapping("/changePassword")
+    public ResponseEntity<ApiResponse<String>> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody PasswordChangeRequest passwordChangeRequest
+                                        ) {
+        return ResponseEntity.ok(ApiResponse.onSuccess(mypageService.changePassword(userDetails.getUsername(), passwordChangeRequest)));
     }
 
 }
