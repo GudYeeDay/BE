@@ -74,6 +74,8 @@ public class UserService {
 
         TokenRefreshResponse tokens = issueTokens(user);
 
+        emailVerificationRepository.deleteByEmail(email);
+
         return UserResponse.of(
                 user,
                 tokens.accessToken(),
@@ -194,7 +196,7 @@ public class UserService {
         String providerId = payload.getSubject(); // Google sub: 고유 식별자
         String email = payload.getEmail();
         String name = (String) payload.get("name");
-        String googleImageUrl = (String) payload.get("picture");
+//        String googleImageUrl = (String) payload.get("picture");
 
         /*
          * emailVerified 검증은 이메일 기반 자동 연동의 전제 조건이다.

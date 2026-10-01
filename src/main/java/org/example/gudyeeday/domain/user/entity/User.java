@@ -5,6 +5,8 @@ import lombok.*;
 import org.example.gudyeeday.common.entity.BaseEntity;
 import org.example.gudyeeday.domain.user.enums.Provider;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -95,4 +97,9 @@ public class User extends BaseEntity {
     public void updatePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
+
+    public long getDaysSinceSignup() {
+        return ChronoUnit.DAYS.between(getCreatedAt().toLocalDate(), LocalDate.now()) + 1;
+    }
+
 }

@@ -20,6 +20,7 @@ public enum AuthErrorCode implements BaseCode {
     INVALID_SOCIAL_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH4013", "유효하지 않은 소셜 로그인 토큰입니다."),
     ALREADY_LINKED_GOOGLE_ACCOUNT(HttpStatus.CONFLICT,"AUTH4014", "이미 다른 구글 계정과 연동된 이메일입니다."),
     SOCIAL_LOGIN_REQUIRED(HttpStatus.BAD_REQUEST, "AUTH4015", "구글 로그인으로 가입된 계정입니다. 구글 로그인을 이용해주세요."),
+    SAME_AS_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "AUTH4016", "새 비밀번호는 현재 비밀번호와 달라야 합니다."),
 
     FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH4030", "접근 권한이 없습니다."),
 
