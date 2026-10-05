@@ -21,6 +21,9 @@ public interface UserMissionRepository extends JpaRepository<UserMission, Long> 
 
     List<UserMission> findByUserIdAndMissionIdIn(Long userId, Collection<Long> missionIds);
 
+    @EntityGraph(attributePaths = {"user", "mission"})
+    List<UserMission> findAllByStatus(UserMissionStatus status);
+
     // 기간 [from, to) 내 완료 시각 목록
     @Query("""
             select um.completedAt from UserMission um
