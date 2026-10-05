@@ -1,6 +1,8 @@
 package org.example.gudyeeday.domain.home.repository;
 
 import org.example.gudyeeday.config.TimeConfig;
+import org.example.gudyeeday.domain.complete.entity.CompleteMission;
+import org.example.gudyeeday.domain.complete.repository.CompleteMissionRepository;
 import org.example.gudyeeday.domain.home.entity.WeeklyPhoto;
 import org.example.gudyeeday.domain.mission.entity.Mission;
 import org.example.gudyeeday.domain.mission.entity.UserMission;
@@ -42,6 +44,9 @@ class HomeRepositoryTest {
 
     @Autowired
     private UserMissionRepository userMissionRepository;
+
+    @Autowired
+    private CompleteMissionRepository completeMissionRepository;
 
     @Autowired
     private TestEntityManager em;
@@ -91,9 +96,32 @@ class HomeRepositoryTest {
         );
     }
 
-    private void persistCompleted(User owner, Mission mission, LocalDateTime completedAt) {
+    @Test
+    void 지난_기록은_본인이_기준_시각_이전에_완료한_것만_조회된다() {
+        Mission mission = em.persist(Mission.createMission("미션", "설명", DayType.ALL, Season.ALL));
+        CompleteMission lastSunday = persistRecord(user, mission, LocalDateTime.of(2026, 9, 27, 23, 59));
+        CompleteMission older = persistRecord(user, mission, LocalDateTime.of(2026, 8, 1, 9, 0));
+        persistRecord(user, mission, LocalDateTime.of(2026, 9, 28, 0, 0));
+        persistRecord(otherUser, mission, LocalDateTime.of(2026, 9, 1, 9, 0));
+        em.flush();
+        em.clear();
+
+        List<Long> ids = completeMissionRepository.findIdsByUserIdAndCompletedAtBefore(
+                user.getId(), LocalDateTime.of(2026, 9, 28, 0, 0));
+        List<CompleteMission> records = completeMissionRepository.findWithMissionByIdIn(ids);
+
+        assertThat(ids).containsExactlyInAnyOrder(lastSunday.getCompleteMissionId(), older.getCompleteMissionId());
+        assertThat(records).extracting(record -> record.getUserMission().getMission().getTitle()).containsOnly("미션");
+    }
+
+    private UserMission persistCompleted(User owner, Mission mission, LocalDateTime completedAt) {
         UserMission userMission = UserMission.startMission(owner, mission);
         userMission.complete(completedAt);
-        em.persist(userMission);
+        return em.persist(userMission);
+    }
+
+    private CompleteMission persistRecord(User owner, Mission mission, LocalDateTime completedAt) {
+        UserMission userMission = persistCompleted(owner, mission, completedAt);
+        return em.persist(CompleteMission.create(owner, userMission, "photo.jpg", "위치", "내용"));
     }
 }

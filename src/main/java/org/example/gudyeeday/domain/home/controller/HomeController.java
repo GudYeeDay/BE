@@ -14,7 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-@Tag(name = "Home API", description = "홈 - 주차별 낭만 기록 사진/이번 달 기록 일수")
+@Tag(name = "Home API", description = "홈 - 주차별 낭만 기록 사진/이번 달 기록 일수/지난 낭만들")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/home")
@@ -26,9 +26,12 @@ public class HomeController {
             summary = "홈 조회",
             description = """
                     - name: 사용자 닉네임
+                    - hasUnreadNotification: 안 읽은 알림이 있는지
                     - monthlyCompletedDays: 이번 달(KST) 미션을 완료한 날의 수. 하루에 여러 미션을 완료해도 1일로 셉니다.
                     - weeklyPhotos: 오늘(KST)이 속한 주(월요일~일요일)의 사진. startDate/endDate는 이번 주 월요일/일요일(yyyy-MM-dd)이고, days는 월요일부터 7일입니다.
-                      today는 오늘 여부이며, 그날 올린 사진이 없으면 weeklyPhotoId/imageUrl이 null입니다. 주가 바뀌면 지난 주 사진은 포함되지 않습니다.""")
+                      today는 오늘 여부이며, 그날 올린 사진이 없으면 weeklyPhotoId/imageUrl이 null입니다. 주가 바뀌면 지난 주 사진은 포함되지 않습니다.
+                    - pastRecords: 이번 주 월요일 0시(KST) 이전에 완료한 미션 기록 중 랜덤 최대 5개. 호출할 때마다 새로 추첨합니다. 기록이 없으면 빈 배열입니다.
+                      title/description은 미션 이름/설명, date는 미션 완료 날짜(yyyy-MM-dd), location은 기록한 위치(없으면 null)입니다.""")
     @GetMapping
     public ResponseEntity<ApiResponse<HomeResponse>> getHome(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.onSuccess(homeService.getHome(userDetails.getUsername())));

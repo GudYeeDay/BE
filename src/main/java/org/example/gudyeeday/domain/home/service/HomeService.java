@@ -3,7 +3,10 @@ package org.example.gudyeeday.domain.home.service;
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.exception.CustomException;
 import org.example.gudyeeday.common.s3.S3Uploader;
+import org.example.gudyeeday.domain.complete.entity.CompleteMission;
+import org.example.gudyeeday.domain.complete.repository.CompleteMissionRepository;
 import org.example.gudyeeday.domain.home.dto.response.HomeResponse;
+import org.example.gudyeeday.domain.home.dto.response.PastRecordResponse;
 import org.example.gudyeeday.domain.home.dto.response.WeeklyPhotoDayResponse;
 import org.example.gudyeeday.domain.home.dto.response.WeeklyPhotoResponse;
 import org.example.gudyeeday.domain.home.dto.response.WeeklyPhotosResponse;
@@ -11,6 +14,7 @@ import org.example.gudyeeday.domain.home.entity.WeeklyPhoto;
 import org.example.gudyeeday.domain.home.exception.HomeErrorCode;
 import org.example.gudyeeday.domain.home.repository.WeeklyPhotoRepository;
 import org.example.gudyeeday.domain.mission.repository.UserMissionRepository;
+import org.example.gudyeeday.domain.notification.repository.NotificationRepository;
 import org.example.gudyeeday.domain.user.entity.User;
 import org.example.gudyeeday.domain.user.exception.AuthErrorCode;
 import org.example.gudyeeday.domain.user.repository.UserRepository;
@@ -25,8 +29,11 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -38,22 +45,28 @@ public class HomeService {
     // 한 주는 월요일에 시작해 일요일에 끝남
     private static final DayOfWeek WEEK_START = DayOfWeek.MONDAY;
     private static final String WEEKLY_PHOTO_DIR = "weekly-photos";
+    private static final int PAST_RECORD_COUNT = 5;
 
     private final WeeklyPhotoRepository weeklyPhotoRepository;
     private final UserMissionRepository userMissionRepository;
+    private final CompleteMissionRepository completeMissionRepository;
+    private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final S3Uploader s3Uploader;
     private final Clock clock;
 
-    // 홈: 닉네임, 이번 달 완료 일수, 이번 주(KST) 사진
+    // 홈: 닉네임, 안 읽은 알림 여부, 이번 달 완료 일수, 이번 주(KST) 사진, 지난 낭만들
     public HomeResponse getHome(String email) {
         User user = getUser(email);
         LocalDate today = LocalDate.now(clock);
+        LocalDate weekStart = today.with(TemporalAdjusters.previousOrSame(WEEK_START));
 
         return new HomeResponse(
                 user.getName(),
+                notificationRepository.existsByUserIdAndReadAtIsNull(user.getId()),
                 countMonthlyCompletedDays(user, today),
-                getWeeklyPhotos(user, today)
+                getWeeklyPhotos(user, today, weekStart),
+                getPastRecords(user, weekStart)
         );
     }
 
@@ -81,8 +94,30 @@ public class HomeService {
         return WeeklyPhotoResponse.from(weeklyPhoto);
     }
 
-    private WeeklyPhotosResponse getWeeklyPhotos(User user, LocalDate today) {
-        LocalDate startDate = today.with(TemporalAdjusters.previousOrSame(WEEK_START));
+    // 이번 주와 겹치지 않도록 이번 주 월요일 0시 이전에 완료한 기록 중에서 랜덤으로 고름
+    private List<PastRecordResponse> getPastRecords(User user, LocalDate weekStart) {
+        List<Long> ids = new ArrayList<>(
+                completeMissionRepository.findIdsByUserIdAndCompletedAtBefore(user.getId(), weekStart.atStartOfDay())
+        );
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
+        Collections.shuffle(ids);
+        List<Long> pickedIds = ids.subList(0, Math.min(PAST_RECORD_COUNT, ids.size()));
+
+        // IN 조회는 순서를 보장하지 않으므로 뽑은 순서대로 다시 정렬
+        Map<Long, CompleteMission> recordsById = completeMissionRepository.findWithMissionByIdIn(pickedIds).stream()
+                .collect(Collectors.toMap(CompleteMission::getCompleteMissionId, Function.identity()));
+
+        return pickedIds.stream()
+                .map(recordsById::get)
+                .filter(Objects::nonNull)
+                .map(PastRecordResponse::from)
+                .toList();
+    }
+
+    private WeeklyPhotosResponse getWeeklyPhotos(User user, LocalDate today, LocalDate startDate) {
         LocalDate endDate = startDate.plusDays(DayOfWeek.values().length - 1);
 
         Map<LocalDate, WeeklyPhoto> photosByDate = weeklyPhotoRepository
