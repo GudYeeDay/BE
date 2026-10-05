@@ -79,9 +79,9 @@ class MissionRepositoryTest {
     @Test
     void 보관함에서_삭제한_미션은_다시_추천된다() {
         Mission mission = persistMission(DayType.ALL, Season.ALL);
-        MissionBookmark bookmark = MissionBookmark.createMissionBookmark(user, mission, LocalDateTime.now());
-        bookmark.delete(LocalDateTime.now());
-        em.persist(bookmark);
+        MissionBookmark bookmark = em.persist(MissionBookmark.createMissionBookmark(user, mission, LocalDateTime.now()));
+        em.remove(bookmark);
+        em.flush();
 
         assertThat(missionRepository.findRecommendCandidates(user.getId(), WEEKDAY, FALL)).containsExactly(mission);
     }

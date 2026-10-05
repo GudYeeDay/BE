@@ -31,4 +31,22 @@ public interface CompleteMissionRepository extends JpaRepository<CompleteMission
                                                     @Param("start") LocalDateTime start,
                                                     @Param("end") LocalDateTime end);
 
+    // 완료 시각이 before 이전인 기록 id
+    @Query("""
+            SELECT cm.completeMissionId FROM CompleteMission cm
+            JOIN cm.userMission um
+            WHERE cm.user.id = :userId
+              AND um.completedAt < :before
+            """)
+    List<Long> findIdsByUserIdAndCompletedAtBefore(@Param("userId") Long userId,
+                                                   @Param("before") LocalDateTime before);
+
+    @Query("""
+            SELECT cm FROM CompleteMission cm
+            JOIN FETCH cm.userMission um
+            JOIN FETCH um.mission
+            WHERE cm.completeMissionId IN :ids
+            """)
+    List<CompleteMission> findWithMissionByIdIn(@Param("ids") Collection<Long> ids);
+
 }

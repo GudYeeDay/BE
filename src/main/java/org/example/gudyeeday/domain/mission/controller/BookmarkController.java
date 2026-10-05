@@ -62,7 +62,7 @@ public class BookmarkController {
 
     @Operation(
             summary = "보관함에서 삭제",
-            description = "보관함의 모든 탭에서 사라집니다(소프트 삭제). 진행중/완료 기록은 유지됩니다. 본인 보관함에 없는 항목이면 404(MISSION4043)를 반환합니다.")
+            description = "보관함에서 바로 삭제되어 모든 탭에서 사라집니다. 진행중/완료 기록은 유지됩니다. 본인 보관함에 없는 항목이면 404(MISSION4043)를 반환합니다.")
     @DeleteMapping("/{bookmarkId}")
     public ResponseEntity<ApiResponse<Void>> deleteBookmark(
             @AuthenticationPrincipal UserDetails userDetails,

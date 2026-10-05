@@ -25,8 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -44,43 +46,39 @@ public class MissionService {
     // 오늘(KST) 요일/계절에 맞는 미션 중 보관함에 없고 진행/완료 기록이 없는 기본 제공 미션을 랜덤으로 3개 추천
     public List<MissionRecommendResponse> recommendMissions(String email) {
         User user = getUser(email);
-        LocalDate today = LocalDate.now(clock);
 
-        List<Mission> candidates = missionRepository.findRecommendCandidates(
-                user.getId(),
-                List.of(DayType.ALL, DayType.from(today.getDayOfWeek())),
-                List.of(Season.ALL, Season.from(today.getMonth()))
-        );
-
-        Collections.shuffle(candidates);
-
-        return candidates.stream()
+        return getShuffledCandidates(user).stream()
                 .limit(RECOMMEND_COUNT)
                 .map(MissionRecommendResponse::from)
                 .toList();
     }
 
-    // 추천 미션을 보관함에 저장 (삭제했던 미션이면 복구)
+    // 다른 미션 보기: 추천과 같은 조건에서 지금 보고 있는 미션을 빼고 1개 추천
+    public MissionRecommendResponse recommendAnotherMission(String email, Collection<Long> excludeMissionIds) {
+        User user = getUser(email);
+        Set<Long> excluded = excludeMissionIds == null ? Set.of() : Set.copyOf(excludeMissionIds);
+
+        return getShuffledCandidates(user).stream()
+                .filter(mission -> !excluded.contains(mission.getId()))
+                .findFirst()
+                .map(MissionRecommendResponse::from)
+                .orElseThrow(() -> new CustomException(MissionErrorCode.NO_MORE_RECOMMENDATION));
+    }
+
+    // 추천 미션을 보관함에 저장
     @Transactional
     public MissionBookmarkResponse bookmarkMission(String email, Long missionId) {
         User user = getUser(email);
         Mission mission = getMission(user, missionId);
-        LocalDateTime now = LocalDateTime.now(clock);
 
-        MissionBookmark existing = missionBookmarkRepository.findByUserIdAndMissionId(user.getId(), mission.getId())
-                .orElse(null);
-        if (existing != null) {
-            if (!existing.isDeleted()) {
-                throw new CustomException(MissionErrorCode.ALREADY_BOOKMARKED);
-            }
-            existing.restore(now);
-            return MissionBookmarkResponse.from(existing);
+        if (missionBookmarkRepository.findByUserIdAndMissionId(user.getId(), mission.getId()).isPresent()) {
+            throw new CustomException(MissionErrorCode.ALREADY_BOOKMARKED);
         }
 
         MissionBookmark bookmark;
         try {
             bookmark = missionBookmarkRepository.save(
-                    MissionBookmark.createMissionBookmark(user, mission, now)
+                    MissionBookmark.createMissionBookmark(user, mission, LocalDateTime.now(clock))
             );
         } catch (DataIntegrityViolationException e) {
             // 동시 요청으로 그 사이에 같은 미션이 저장된 경우
@@ -90,15 +88,15 @@ public class MissionService {
         return MissionBookmarkResponse.from(bookmark);
     }
 
-    // 보관함 저장 해제 (소프트 삭제)
+    // 보관함 저장 해제 (바로 삭제)
     @Transactional
     public void unbookmarkMission(String email, Long missionId) {
         User user = getUser(email);
 
-        MissionBookmark bookmark = missionBookmarkRepository.findByUserIdAndMissionIdAndDeletedAtIsNull(user.getId(), missionId)
+        MissionBookmark bookmark = missionBookmarkRepository.findByUserIdAndMissionId(user.getId(), missionId)
                 .orElseThrow(() -> new CustomException(MissionErrorCode.BOOKMARK_NOT_FOUND));
 
-        bookmark.delete(LocalDateTime.now(clock));
+        missionBookmarkRepository.delete(bookmark);
     }
 
     // 미션 시작 (한 번에 하나만 진행 가능)
@@ -125,7 +123,7 @@ public class MissionService {
     }
 
     // 진행중인 미션 완료
-    // 보관함에 없던 미션은 보관함에 저장해 완료한 미션 목록에 나오게 함 (보관함에서 삭제한 미션은 삭제 상태 유지)
+    // 보관함에 없던 미션은 보관함에 저장해 완료한 미션 목록에 나오게 함
     @Transactional
     public InProgressMissionResponse completeInProgressMission(String email) {
         User user = getUser(email);
@@ -147,6 +145,19 @@ public class MissionService {
     public void quitInProgressMission(String email) {
         User user = getUser(email);
         userMissionRepository.delete(getInProgressUserMission(user));
+    }
+
+    private List<Mission> getShuffledCandidates(User user) {
+        LocalDate today = LocalDate.now(clock);
+
+        List<Mission> candidates = missionRepository.findRecommendCandidates(
+                user.getId(),
+                List.of(DayType.ALL, DayType.from(today.getDayOfWeek())),
+                List.of(Season.ALL, Season.from(today.getMonth()))
+        );
+
+        Collections.shuffle(candidates);
+        return candidates;
     }
 
     private User getUser(String email) {
