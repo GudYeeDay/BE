@@ -37,4 +37,8 @@ public interface UserMissionRepository extends JpaRepository<UserMission, Long> 
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to
     );
+
+    Long countByUserId(Long userId);
+
+    Long countByUserIdAndStatus(Long userId, UserMissionStatus status);
 }

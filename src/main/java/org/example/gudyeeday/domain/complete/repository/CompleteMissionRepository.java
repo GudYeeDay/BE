@@ -49,4 +49,20 @@ public interface CompleteMissionRepository extends JpaRepository<CompleteMission
             """)
     List<CompleteMission> findWithMissionByIdIn(@Param("ids") Collection<Long> ids);
 
+    Long countByUserId(Long userId);
+
+    @Query("""
+        select cm from CompleteMission cm
+        join fetch cm.userMission um
+        where cm.user.id = :userId
+          and um.completedAt >= :start
+          and um.completedAt < :end
+        order by um.completedAt asc
+        """)
+    List<CompleteMission> findAllByUserIdAndCreatedAtBetween(
+            @Param("userId") Long userId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
 }

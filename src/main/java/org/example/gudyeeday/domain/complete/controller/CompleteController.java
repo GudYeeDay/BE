@@ -35,18 +35,50 @@ public class CompleteController {
     private final CompleteService completeService;
 
     @Operation(summary = "미션 완료하기", description = "")
-    @PostMapping(value = "/complete/{userMissionId}",
+    @PostMapping(value = "/{userMissionId}",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<List<CompleteMissionResponse>>> completeMission(
+    public ResponseEntity<ApiResponse<CompleteMissionResponse>> completeMission(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long userMissionId,
             @RequestPart("image") MultipartFile image,
             @Valid @ParameterObject @ModelAttribute CompleteMissionRequest request) {
 
-        List<CompleteMissionResponse> response = completeService.completeMission(userDetails.getUsername(), userMissionId, image, request);
+        CompleteMissionResponse response = completeService.completeMission(userDetails.getUsername(), userMissionId, image, request);
 
-        log.info("2차로 request = {}", request);
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
+    }
+
+    @Operation(summary = "데일리피드", description = "")
+    @GetMapping(value = "/dailyFeed")
+    public ResponseEntity<ApiResponse<List<CompleteMissionResponse>>> dailyFeed(@AuthenticationPrincipal UserDetails userDetails){
+        List<CompleteMissionResponse> response = completeService.dailyFeed(userDetails.getUsername());
+
+        return ResponseEntity.ok(ApiResponse.onSuccess(response));
+    }
+
+    @Operation(summary = "기록 수정", description = "")
+    @PutMapping(value = "/{completeMissionId}/update",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<CompleteMissionResponse>> updateRecord(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long completeMissionId,
+            @RequestPart(name = "image", required = false) MultipartFile image,
+            @Valid @ParameterObject @ModelAttribute CompleteMissionRequest request
+            ){
+        CompleteMissionResponse response = completeService.updateRecord(userDetails.getUsername(), completeMissionId, image, request);
+
+        return ResponseEntity.ok(ApiResponse.onSuccess(response));
+    }
+
+    @Operation(summary = "기록 삭제", description = "")
+    @DeleteMapping(value = "/{completeMissionId}/delete")
+    public ResponseEntity<ApiResponse<Long>> deleteRecord(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long completeMissionId
+    ){
+        Long deleteCompleteId = completeService.deleteRecord(userDetails.getUsername(), completeMissionId);
+
+        return ResponseEntity.ok(ApiResponse.onSuccess(deleteCompleteId));
     }
 
 }
