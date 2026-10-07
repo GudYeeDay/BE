@@ -52,4 +52,13 @@ public class CompleteMission extends BaseEntity {
                 .build();
     }
 
+    public void updateRecord(String location, String content) {
+        this.location = location;
+        this.content = content;
+    }
+
+    public void updateImage(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
 }

@@ -37,7 +37,7 @@ public class CompleteService {
     private final S3Uploader s3Uploader;
 
     @Transactional
-    public List<CompleteMissionResponse> completeMission(String email, Long userMissionId, MultipartFile image, CompleteMissionRequest request) {
+    public CompleteMissionResponse completeMission(String email, Long userMissionId, MultipartFile image, CompleteMissionRequest request) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
 
         UserMission userMission = userMissionRepository.findById(userMissionId).orElseThrow(() -> new CustomException(MissionErrorCode.MISSION_NOT_FOUND));
@@ -54,10 +54,8 @@ public class CompleteService {
             throw new CustomException(CompleteErrorCode.IMAGE_REQUIRED);
         }
 
-        // 검증이 모두 끝난 뒤 업로드
         String imageUrl = s3Uploader.upload(image, "complete-mission");
 
-        // 미션 완료 처리 (completedAt 세팅)
         userMission.complete(LocalDateTime.now());
 
         CompleteMission completeMission = CompleteMission.create(
@@ -68,13 +66,18 @@ public class CompleteService {
                 request.content()
         );
 
-        completeMissionRepository.save(completeMission);
+        CompleteMission newCompleteMission = completeMissionRepository.save(completeMission);
 
-        // 오늘 완료한 기록 전체 조회
+        return CompleteMissionResponse.from(newCompleteMission);
+
+    }
+
+    @Transactional
+    public List<CompleteMissionResponse> dailyFeed(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
+
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
         LocalDateTime startOfTomorrow = startOfToday.plusDays(1);
-
-        log.info("1차로 확인 request = {}", request);
 
         return completeMissionRepository
                 .findTodayCompleteMissions(user, startOfToday, startOfTomorrow)
@@ -83,5 +86,50 @@ public class CompleteService {
                 .toList();
 
     }
+
+    @Transactional
+    public CompleteMissionResponse updateRecord(String email, Long completeMissionId, MultipartFile image, CompleteMissionRequest request) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
+
+        CompleteMission completeMission = completeMissionRepository.findById(completeMissionId).orElseThrow(() -> new CustomException(MissionErrorCode.MISSION_NOT_FOUND));
+
+        if (!completeMission.getUser().getId().equals(user.getId())) {
+            throw new CustomException(CompleteErrorCode.MISSION_ACCESS_DENIED);
+        }
+
+        if (image != null && !image.isEmpty()) {
+            String oldImageUrl = completeMission.getImageUrl();
+            String newImageUrl = s3Uploader.upload(image, "complete-mission");
+            completeMission.updateImage(newImageUrl);
+            s3Uploader.delete(oldImageUrl);
+        }
+
+        completeMission.updateRecord(request.location(), request.content());
+
+        return CompleteMissionResponse.from(completeMission);
+
+    }
+
+    @Transactional
+    public Long deleteRecord(String email, Long completeMissionId) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
+
+        CompleteMission completeMission = completeMissionRepository.findById(completeMissionId).orElseThrow(() -> new CustomException(MissionErrorCode.MISSION_NOT_FOUND));
+
+        if (!completeMission.getUser().getId().equals(user.getId())) {
+            throw new CustomException(CompleteErrorCode.MISSION_ACCESS_DENIED);
+        }
+
+        Long deleteCompleteId = completeMission.getCompleteMissionId();
+
+        s3Uploader.delete(completeMission.getImageUrl());
+
+        completeMissionRepository.delete(completeMission);
+
+        return deleteCompleteId;
+
+    }
+
+
 
 }

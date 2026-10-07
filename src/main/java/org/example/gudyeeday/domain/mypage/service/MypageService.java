@@ -2,6 +2,9 @@ package org.example.gudyeeday.domain.mypage.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.exception.CustomException;
+import org.example.gudyeeday.domain.complete.repository.CompleteMissionRepository;
+import org.example.gudyeeday.domain.mission.enums.UserMissionStatus;
+import org.example.gudyeeday.domain.mission.repository.UserMissionRepository;
 import org.example.gudyeeday.domain.mypage.dto.request.NameChangeRequest;
 import org.example.gudyeeday.domain.mypage.dto.request.PasswordChangeRequest;
 import org.example.gudyeeday.domain.mypage.dto.response.ProfileResponse;
@@ -23,19 +26,20 @@ public class MypageService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserMissionRepository userMissionRepository;
+    private final CompleteMissionRepository completeMissionRepository;
 
     @Transactional
     public ProfileResponse profile(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
 
-        //기록된 미션수 가져오는 로직
+        Long userMissionCount = userMissionRepository.countByUserId(user.getId());
 
-        //완성된 미션수 가져오는 로직
+        Long completeMissionCount = userMissionRepository.countByUserIdAndStatus(user.getId(), UserMissionStatus.COMPLETED);
 
-        //미완성 미션수 가져오는 로직
+        Long unCompleteMissionCount = userMissionCount - completeMissionCount;
 
-        //아래에 위 3개 채우기
-        return  new ProfileResponse(user.getName(), user.getDaysSinceSignup(), 30l, 20l, 10l);
+        return  new ProfileResponse(user.getName(), user.getDaysSinceSignup(), userMissionCount, completeMissionCount, unCompleteMissionCount);
 
     }
 
