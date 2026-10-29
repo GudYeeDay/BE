@@ -173,13 +173,12 @@ class BookmarkServiceTest {
     }
 
     @Test
-    void 보관함에서_삭제하면_소프트_삭제된다() {
+    void 보관함에서_삭제하면_바로_삭제된다() {
         when(missionBookmarkRepository.findWithMissionByIdAndUserId(100L, 1L)).thenReturn(Optional.of(saved));
 
         bookmarkService.deleteBookmark(EMAIL, 100L);
 
-        assertThat(saved.getDeletedAt()).isEqualTo(LocalDateTime.of(2026, 9, 26, 1, 0));
-        verify(missionBookmarkRepository, never()).delete(any());
+        verify(missionBookmarkRepository).delete(saved);
     }
 
     @Test

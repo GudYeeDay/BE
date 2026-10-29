@@ -82,11 +82,11 @@ public class BookmarkService {
         return BookmarkDetailResponse.from(bookmark);
     }
 
-    // 보관함에서 삭제 (소프트 삭제, 모든 탭에서 사라짐)
+    // 보관함에서 삭제 (바로 삭제, 모든 탭에서 사라짐)
     @Transactional
     public void deleteBookmark(String email, Long bookmarkId) {
         User user = getUser(email);
-        getBookmark(user, bookmarkId).delete(LocalDateTime.now(clock));
+        missionBookmarkRepository.delete(getBookmark(user, bookmarkId));
     }
 
     // 저장한 미션으로 시작 (진행중인 미션이 없을 때만 가능)

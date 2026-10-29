@@ -59,6 +59,11 @@ app:
     cloudfront-domain: ""
     presign-seconds: 3600
 
+notification:
+  mission-reminder:
+    # 진행중인 미션 리마인드 알림 생성 시각 (KST, 초 분 시 일 월 요일)
+    cron: ${MISSION_REMINDER_CRON:0 0 20 * * *}
+
 logging:
   level:
     org.springframework.web: DEBUG

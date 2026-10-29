@@ -1,6 +1,7 @@
 package org.example.gudyeeday.domain.mission.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.response.ApiResponse;
@@ -32,8 +33,18 @@ public class MissionController {
     }
 
     @Operation(
+            summary = "다른 미션 보기",
+            description = "미션 추천과 같은 조건에서 excludeMissionIds(지금 받은 추천 미션 id들)를 빼고 랜덤으로 1개를 반환합니다. 더 추천할 미션이 없으면 404(MISSION4044)를 반환합니다.")
+    @GetMapping("/recommendations/another")
+    public ResponseEntity<ApiResponse<MissionRecommendResponse>> recommendAnotherMission(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(description = "제외할 미션 id 목록 (예: 1,2,3)") @RequestParam(required = false) List<Long> excludeMissionIds) {
+        return ResponseEntity.ok(ApiResponse.onSuccess(missionService.recommendAnotherMission(userDetails.getUsername(), excludeMissionIds)));
+    }
+
+    @Operation(
             summary = "미션 보관함 저장(북마크)",
-            description = "보관함에서 삭제했던 미션이면 다시 저장됩니다(저장 날짜 갱신). 이미 저장된 미션이면 409(MISSION4092)를 반환합니다.")
+            description = "이미 저장된 미션이면 409(MISSION4092)를 반환합니다.")
     @PostMapping("/{missionId}/bookmarks")
     public ResponseEntity<ApiResponse<MissionBookmarkResponse>> bookmarkMission(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -43,7 +54,7 @@ public class MissionController {
 
     @Operation(
             summary = "미션 보관함 저장 해제(북마크 해제)",
-            description = "보관함의 모든 탭에서 사라집니다(소프트 삭제). 보관함에 저장되지 않은 미션이면 404(MISSION4043)를 반환합니다.")
+            description = "보관함에서 바로 삭제되어 모든 탭에서 사라집니다. 보관함에 저장되지 않은 미션이면 404(MISSION4043)를 반환합니다.")
     @DeleteMapping("/{missionId}/bookmarks")
     public ResponseEntity<ApiResponse<Void>> unbookmarkMission(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -72,7 +83,7 @@ public class MissionController {
 
     @Operation(
             summary = "진행중인 미션 완료",
-            description = "진행중인 미션을 완료 상태로 바꿉니다. 보관함에 없던 미션은 보관함에 저장되어 완료한 미션 목록에 나옵니다(보관함에서 삭제한 미션은 제외). 완료 후에는 새 미션을 시작할 수 있습니다. 진행중인 미션이 없으면 404(MISSION4042)를 반환합니다.")
+            description = "진행중인 미션을 완료 상태로 바꿉니다. 보관함에 없던 미션은 보관함에 저장되어 완료한 미션 목록에 나옵니다. 완료 후에는 새 미션을 시작할 수 있습니다. 진행중인 미션이 없으면 404(MISSION4042)를 반환합니다.")
     @PostMapping("/in-progress/complete")
     public ResponseEntity<ApiResponse<InProgressMissionResponse>> completeInProgressMission(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(ApiResponse.onSuccess(missionService.completeInProgressMission(userDetails.getUsername())));

@@ -71,21 +71,6 @@ class MissionBookmarkRepositoryTest {
         assertThat(missionBookmarkRepository.findWithMissionByIdAndUserId(others.getId(), otherUser.getId())).isPresent();
     }
 
-    @Test
-    void 삭제한_항목은_목록과_단건_조회에서_제외된다() {
-        MissionBookmark kept = persistBookmark(user, LocalDateTime.of(2026, 8, 29, 9, 0));
-        MissionBookmark deleted = persistBookmark(user, LocalDateTime.of(2026, 9, 1, 9, 0));
-        deleted.delete(LocalDateTime.of(2026, 9, 2, 9, 0));
-        em.flush();
-
-        assertThat(missionBookmarkRepository.findAllWithMissionByUserId(user.getId()))
-                .extracting(MissionBookmark::getId).containsExactly(kept.getId());
-        assertThat(missionBookmarkRepository.findWithMissionByIdAndUserId(deleted.getId(), user.getId())).isEmpty();
-        assertThat(missionBookmarkRepository.findByUserIdAndMissionIdAndDeletedAtIsNull(user.getId(), deleted.getMission().getId())).isEmpty();
-        // 다시 저장 시 복구할 수 있도록 삭제된 항목도 조회 가능
-        assertThat(missionBookmarkRepository.findByUserIdAndMissionId(user.getId(), deleted.getMission().getId())).isPresent();
-    }
-
     private MissionBookmark persistBookmark(User owner, LocalDateTime savedAt) {
         Mission mission = em.persist(Mission.createMission("제목", "설명", DayType.ALL, Season.ALL));
         return em.persist(MissionBookmark.createMissionBookmark(owner, mission, savedAt));
