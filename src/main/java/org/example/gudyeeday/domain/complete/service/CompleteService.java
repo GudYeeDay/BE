@@ -72,15 +72,15 @@ public class CompleteService {
 
     }
 
-    @Transactional
-    public List<CompleteMissionResponse> dailyFeed(String email) {
+    @Transactional(readOnly = true)
+    public List<CompleteMissionResponse> dailyFeed(String email, LocalDate targetDate) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
 
-        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+        LocalDateTime startOfToday = targetDate.atStartOfDay();
         LocalDateTime startOfTomorrow = startOfToday.plusDays(1);
 
         return completeMissionRepository
-                .findTodayCompleteMissions(user, startOfToday, startOfTomorrow)
+                .findDailyCompleteMissions(user, startOfToday, startOfTomorrow)
                 .stream()
                 .map(CompleteMissionResponse::from)
                 .toList();

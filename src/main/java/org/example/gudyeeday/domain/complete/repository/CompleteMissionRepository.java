@@ -27,7 +27,7 @@ public interface CompleteMissionRepository extends JpaRepository<CompleteMission
               AND um.completedAt < :end
             ORDER BY um.completedAt DESC
             """)
-    List<CompleteMission> findTodayCompleteMissions(@Param("user") User user,
+    List<CompleteMission> findDailyCompleteMissions(@Param("user") User user,
                                                     @Param("start") LocalDateTime start,
                                                     @Param("end") LocalDateTime end);
 

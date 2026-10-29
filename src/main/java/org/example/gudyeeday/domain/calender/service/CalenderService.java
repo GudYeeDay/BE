@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.gudyeeday.common.exception.CustomException;
 import org.example.gudyeeday.domain.calender.dto.response.CalenderRecordResponse;
 import org.example.gudyeeday.domain.calender.dto.response.CalenderResponse;
+import org.example.gudyeeday.domain.complete.entity.CompleteMission;
 import org.example.gudyeeday.domain.complete.repository.CompleteMissionRepository;
 import org.example.gudyeeday.domain.user.entity.User;
 import org.example.gudyeeday.domain.user.exception.AuthErrorCode;
@@ -14,13 +15,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.Comparator;
 import java.util.List;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CalenderService {
+
+    private static final Comparator<CompleteMission> LATEST_CREATED =
+            Comparator.comparing(CompleteMission::getCreatedAt,
+                            Comparator.nullsFirst(Comparator.naturalOrder()))
+                    .thenComparing(CompleteMission::getCompleteMissionId);
 
     private final UserRepository userRepository;
     private final CompleteMissionRepository completeMissionRepository;
@@ -35,6 +45,15 @@ public class CalenderService {
         List<CalenderRecordResponse> records = completeMissionRepository
                 .findAllByUserIdAndCreatedAtBetween(user.getId(), start, end)
                 .stream()
+                .filter(cm -> cm.getCreatedAt().isBefore(end))
+                .collect(Collectors.toMap(
+                        cm -> cm.getCreatedAt().toLocalDate(),
+                        Function.identity(),
+                        BinaryOperator.maxBy(LATEST_CREATED)
+                ))
+                .values()
+                .stream()
+                .sorted(Comparator.comparing(CompleteMission::getCreatedAt))
                 .map(CalenderRecordResponse::from)
                 .toList();
 
