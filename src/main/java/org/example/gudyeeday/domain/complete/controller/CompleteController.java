@@ -1,6 +1,7 @@
 package org.example.gudyeeday.domain.complete.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.example.gudyeeday.domain.mypage.service.MypageService;
 import org.example.gudyeeday.domain.user.service.EmailVerificationService;
 import org.example.gudyeeday.domain.user.service.UserService;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +25,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -48,10 +52,16 @@ public class CompleteController {
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
 
-    @Operation(summary = "데일리피드", description = "")
+    @Operation(summary = "데일리피드", description = "date 파라미터(yyyy-MM-dd)가 있으면 해당 날짜, 없으면 오늘의 피드를 조회합니다.")
     @GetMapping(value = "/dailyFeed")
-    public ResponseEntity<ApiResponse<List<CompleteMissionResponse>>> dailyFeed(@AuthenticationPrincipal UserDetails userDetails){
-        List<CompleteMissionResponse> response = completeService.dailyFeed(userDetails.getUsername());
+    public ResponseEntity<ApiResponse<List<CompleteMissionResponse>>> dailyFeed(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Parameter(description = "조회할 날짜 (예: 2026-10-29), 미입력 시 오늘")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        LocalDate targetDate = (date != null) ? date : LocalDate.now(ZoneId.of("Asia/Seoul"));
+        List<CompleteMissionResponse> response = completeService.dailyFeed(userDetails.getUsername(), targetDate);
 
         return ResponseEntity.ok(ApiResponse.onSuccess(response));
     }
