@@ -58,7 +58,8 @@ public class SecurityConfig {
                                 "/api/auth/passwordReset",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/api/healthCheck"
+                                "/api/healthCheck",
+                                "/api/admin/**"
                         ).permitAll()
 
                         // GET 전용 읽기 허용 API

@@ -2,9 +2,12 @@ package org.example.gudyeeday.domain.notification.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.response.ApiResponse;
+import org.example.gudyeeday.domain.notification.dto.request.DeviceTokenRequest;
 import org.example.gudyeeday.domain.notification.dto.response.NotificationResponse;
+import org.example.gudyeeday.domain.notification.service.DeviceTokenService;
 import org.example.gudyeeday.domain.notification.service.NotificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +23,7 @@ import java.util.List;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final DeviceTokenService deviceTokenService;
 
     @Operation(
             summary = "알림 목록",
@@ -41,5 +45,29 @@ public class NotificationController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long notificationId) {
         return ResponseEntity.ok(ApiResponse.onSuccess(notificationService.getNotification(userDetails.getUsername(), notificationId)));
+    }
+
+    @Operation(
+            summary = "푸시 기기 토큰 등록",
+            description = """
+                    앱에서 Firebase로 받은 FCM 토큰을 등록합니다. 로그인 직후와 토큰이 바뀔 때(onTokenRefresh) 호출해 주세요.
+                    같은 토큰이 다른 계정에 등록돼 있으면 지금 로그인한 계정으로 옮겨집니다.""")
+    @PostMapping("/device-token")
+    public ResponseEntity<ApiResponse<Void>> registerDeviceToken(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody DeviceTokenRequest request) {
+        deviceTokenService.registerToken(userDetails.getUsername(), request.token());
+        return ResponseEntity.ok(ApiResponse.onSuccess(null));
+    }
+
+    @Operation(
+            summary = "푸시 기기 토큰 해제",
+            description = "로그아웃하기 전에 호출하면 이 기기로 더 이상 푸시가 가지 않습니다. 등록되지 않은 토큰이어도 성공합니다.")
+    @DeleteMapping("/device-token")
+    public ResponseEntity<ApiResponse<Void>> deleteDeviceToken(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody DeviceTokenRequest request) {
+        deviceTokenService.deleteToken(userDetails.getUsername(), request.token());
+        return ResponseEntity.ok(ApiResponse.onSuccess(null));
     }
 }

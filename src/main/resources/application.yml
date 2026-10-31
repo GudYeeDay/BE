@@ -60,6 +60,9 @@ app:
     presign-seconds: 3600
 
 notification:
+  daily-mission:
+    # 오늘의 굳이 알림 생성 시각 (KST, 초 분 시 일 월 요일) - 전체 사용자 대상
+    cron: ${DAILY_MISSION_CRON:0 0 9 * * *}
   mission-reminder:
     # 진행중인 미션 리마인드 알림 생성 시각 (KST, 초 분 시 일 월 요일)
     cron: ${MISSION_REMINDER_CRON:0 0 20 * * *}
@@ -67,3 +70,14 @@ notification:
 logging:
   level:
     org.springframework.web: DEBUG
+
+fcm:
+  # true일 때만 실제 폰으로 푸시를 보냄 (false면 발송 대상만 로그로 남김)
+  enabled: ${FCM_ENABLED:false}
+  # Firebase 서비스 계정 키: 파일 경로 또는 JSON 전체를 base64 인코딩한 값 중 하나만 설정
+#  credentials-path: ${FCM_CREDENTIALS_PATH:}
+  credentials-base64: ${FCM_CREDENTIALS_BASE64:}
+
+admin:
+  # 관리자 API 호출 시 X-Admin-Key 헤더로 보낼 키 (비어 있으면 관리자 API는 항상 403)
+  api-key: ${ADMIN_API_KEY:}
