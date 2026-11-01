@@ -55,6 +55,9 @@ dependencies {
 
     // FCM 푸시 알림
     implementation 'com.google.firebase:firebase-admin:9.4.3'
+
+    // Apple 로그인
+    implementation 'org.springframework.security:spring-security-oauth2-jose'
 }
 
 tasks.named('test') {

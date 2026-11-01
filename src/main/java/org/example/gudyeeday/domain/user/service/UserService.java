@@ -4,12 +4,10 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.exception.CustomException;
+import org.example.gudyeeday.config.AppleIdTokenVerifier;
 import org.example.gudyeeday.config.jwt.JwtTokenProvider;
 import org.example.gudyeeday.domain.user.dto.request.*;
-import org.example.gudyeeday.domain.user.dto.response.EmailVerificationResponse;
-import org.example.gudyeeday.domain.user.dto.response.GoogleLoginResponse;
-import org.example.gudyeeday.domain.user.dto.response.TokenRefreshResponse;
-import org.example.gudyeeday.domain.user.dto.response.UserResponse;
+import org.example.gudyeeday.domain.user.dto.response.*;
 import org.example.gudyeeday.domain.user.entity.EmailVerification;
 import org.example.gudyeeday.domain.user.entity.RefreshToken;
 import org.example.gudyeeday.domain.user.entity.User;
@@ -45,6 +43,7 @@ public class UserService {
     private final EmailVerificationRepository emailVerificationRepository;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
     private final EmailVerificationService emailVerificationService;
+    private final AppleIdTokenVerifier appleIdTokenVerifier;
 
     @Lazy
     @org.springframework.beans.factory.annotation.Autowired
@@ -274,6 +273,94 @@ public class UserService {
         TokenRefreshResponse tokenResponse = issueTokens(user);
 
         return GoogleLoginResponse.of(user,tokenResponse, isNewUser);
+    }
+
+    // 애플 서버에서 공개키를 받아 토큰을 검증하므로 트랜잭션 밖에서 처리
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public AppleLoginResponse appleLogin(AppleLoginRequest request) {
+        AppleIdTokenVerifier.AppleIdToken appleIdToken;
+
+        try {
+            appleIdToken = appleIdTokenVerifier.verify(request.identityToken());
+        } catch (Exception e) {
+            throw new CustomException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
+        }
+
+        String appleId = appleIdToken.subject(); // Apple sub: 고유 식별자
+        if (appleId == null || appleId.isBlank()) {
+            throw new CustomException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
+        }
+
+        /*
+         * 이메일은 애플이 확인해준 경우에만 사용한다. (가리기 선택 시 @privaterelay.appleid.com 주소)
+         * 이미 애플로 가입한 사용자는 appleId로 찾으므로 이메일이 없어도 로그인할 수 있다.
+         */
+        String email = appleIdToken.email();
+        if (email != null) {
+            if (!appleIdToken.emailVerified()) {
+                throw new CustomException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
+            }
+            email = email.trim().toLowerCase();
+        }
+
+        return self.processAppleLogin(appleId, email, normalizeAppleName(request.name()));
+    }
+
+    @Transactional
+    public AppleLoginResponse processAppleLogin(
+            String appleId,
+            String email,
+            String name
+    ) {
+
+        // 1) 이미 애플과 연동된 계정 -> 그대로 로그인
+        User user = userRepository.findByAppleId(appleId).orElse(null);
+
+        boolean isNewUser = false;
+
+        if (user == null) {
+            // 처음 애플로 로그인하는데 이메일이 없으면 가입/연동할 수 없음
+            if (email == null) {
+                throw new CustomException(AuthErrorCode.INVALID_SOCIAL_TOKEN);
+            }
+
+            User existing = userRepository.findByEmail(email).orElse(null);
+
+            if (existing != null) {
+                // 2) 동일 이메일의 기존 계정(로컬/구글)이 있으면 애플 계정을 연동하고 그 계정으로 로그인
+                if (existing.hasAppleLinked()) {
+                    // 이메일은 같은데 애플 sub이 다른 비정상 케이스
+                    throw new CustomException(AuthErrorCode.ALREADY_LINKED_APPLE_ACCOUNT);
+                }
+
+                existing.linkAppleAccount(appleId);
+                user = existing;
+
+            } else {
+                // 3) 완전 신규 -> 애플 계정 생성
+                try {
+                    user = userRepository.save(User.createAppleUser(email, name, appleId));
+                } catch (DataIntegrityViolationException e) {
+                    // 동시 요청으로 그 사이에 동일 이메일 계정이 생성된 경우
+                    throw new CustomException(AuthErrorCode.DUPLICATE_EMAIL);
+                }
+
+                isNewUser = true;
+            }
+        }
+
+        TokenRefreshResponse tokenResponse = issueTokens(user);
+
+        return AppleLoginResponse.of(user, tokenResponse, isNewUser);
+    }
+
+    // 애플은 이름을 최초 로그인 때만 주므로 없으면 기본값 (user.name 최대 30자)
+    private String normalizeAppleName(String name) {
+        if (name == null || name.isBlank()) {
+            return "사용자";
+        }
+        String trimmed = name.trim();
+        return trimmed.length() > 30 ? trimmed.substring(0, 30) : trimmed;
     }
 
     @Transactional

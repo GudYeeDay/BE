@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByProviderId(String providerId);
 
+    Optional<User> findByAppleId(String appleId);
+
     // 사용자 단위 동시 요청 직렬화용 (SELECT ... FOR UPDATE)
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.email = :email")
