@@ -76,18 +76,20 @@ class HomeRepositoryTest {
     }
 
     @Test
-    void 완료_시각은_본인의_기간_내_완료한_미션만_조회된다() {
+    void 기록_완료_시각은_본인이_기간_내_남긴_기록만_조회된다() {
         Mission mission = em.persist(Mission.createMission("미션", "설명", DayType.ALL, Season.ALL));
-        persistCompleted(user, mission, LocalDateTime.of(2026, 9, 30, 23, 59));
-        persistCompleted(user, mission, LocalDateTime.of(2026, 10, 1, 0, 0));
-        persistCompleted(user, mission, LocalDateTime.of(2026, 10, 31, 23, 59));
-        persistCompleted(user, mission, LocalDateTime.of(2026, 11, 1, 0, 0));
-        persistCompleted(otherUser, mission, LocalDateTime.of(2026, 10, 2, 9, 0));
+        persistRecord(user, mission, LocalDateTime.of(2026, 9, 30, 23, 59));
+        persistRecord(user, mission, LocalDateTime.of(2026, 10, 1, 0, 0));
+        persistRecord(user, mission, LocalDateTime.of(2026, 10, 31, 23, 59));
+        persistRecord(user, mission, LocalDateTime.of(2026, 11, 1, 0, 0));
+        persistRecord(otherUser, mission, LocalDateTime.of(2026, 10, 2, 9, 0));
+        // 기록 없이 완료만 된 미션(기록 삭제 등)은 세지 않음
+        persistCompleted(user, mission, LocalDateTime.of(2026, 10, 15, 9, 0));
         em.persist(UserMission.startMission(user, mission));
         em.flush();
         em.clear();
 
-        List<LocalDateTime> result = userMissionRepository.findCompletedAtBetween(
+        List<LocalDateTime> result = completeMissionRepository.findCompletedAtByUserIdBetween(
                 user.getId(), LocalDateTime.of(2026, 10, 1, 0, 0), LocalDateTime.of(2026, 11, 1, 0, 0));
 
         assertThat(result).containsExactlyInAnyOrder(

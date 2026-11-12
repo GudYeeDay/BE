@@ -15,7 +15,6 @@ import org.example.gudyeeday.domain.mission.entity.Mission;
 import org.example.gudyeeday.domain.mission.entity.UserMission;
 import org.example.gudyeeday.domain.mission.enums.DayType;
 import org.example.gudyeeday.domain.mission.enums.Season;
-import org.example.gudyeeday.domain.mission.repository.UserMissionRepository;
 import org.example.gudyeeday.domain.notification.repository.NotificationRepository;
 import org.example.gudyeeday.domain.user.entity.User;
 import org.example.gudyeeday.domain.user.repository.UserRepository;
@@ -43,7 +42,6 @@ class HomeServiceTest {
     private static final String IMAGE_URL = "https://bucket.s3.ap-northeast-2.amazonaws.com/weekly-photos/new.jpg";
 
     private final WeeklyPhotoRepository weeklyPhotoRepository = mock(WeeklyPhotoRepository.class);
-    private final UserMissionRepository userMissionRepository = mock(UserMissionRepository.class);
     private final CompleteMissionRepository completeMissionRepository = mock(CompleteMissionRepository.class);
     private final NotificationRepository notificationRepository = mock(NotificationRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
@@ -62,13 +60,14 @@ class HomeServiceTest {
     }
 
     @Test
-    void 홈은_닉네임과_오늘이_속한_월요일부터_일요일까지_7일을_반환한다() {
+    void 홈은_닉네임과_오늘이_속한_월요일부터_일요일까지_7일의_기록_사진을_반환한다() {
         // 2026-10-03(토)
         HomeService homeService = homeService(LocalDateTime.of(2026, 10, 3, 10, 0));
         LocalDate monday = LocalDate.of(2026, 9, 28);
         LocalDate sunday = LocalDate.of(2026, 10, 4);
-        WeeklyPhoto tuesdayPhoto = weeklyPhoto(5L, monday.plusDays(1), "tue.jpg");
-        when(weeklyPhotoRepository.findByUserIdAndPhotoDateBetween(1L, monday, sunday)).thenReturn(List.of(tuesdayPhoto));
+        CompleteMission tuesdayRecord = completeMission(5L, LocalDateTime.of(2026, 9, 29, 18, 0));
+        when(completeMissionRepository.findAllByUserIdAndCreatedAtBetween(1L, monday.atStartOfDay(), sunday.plusDays(1).atStartOfDay()))
+                .thenReturn(List.of(tuesdayRecord));
 
         HomeResponse result = homeService.getHome(EMAIL);
 
@@ -78,11 +77,36 @@ class HomeServiceTest {
         assertThat(result.weeklyPhotos().endDate()).isEqualTo(sunday);
         assertThat(result.weeklyPhotos().days()).extracting(WeeklyPhotoDayResponse::dayOfWeek)
                 .containsExactly(DayOfWeek.values());
-        assertThat(result.weeklyPhotos().days().get(1).imageUrl()).isEqualTo("tue.jpg");
+        assertThat(result.weeklyPhotos().days().get(1).imageUrl()).isEqualTo("record-5.jpg");
+        assertThat(result.weeklyPhotos().days().get(1).completeMissionId()).isEqualTo(5L);
         assertThat(result.weeklyPhotos().days().get(0).imageUrl()).isNull();
+        assertThat(result.weeklyPhotos().days().get(0).completeMissionId()).isNull();
         assertThat(result.weeklyPhotos().days()).filteredOn(WeeklyPhotoDayResponse::today)
                 .extracting(WeeklyPhotoDayResponse::date)
                 .containsExactly(LocalDate.of(2026, 10, 3));
+    }
+
+    @Test
+    void 하루에_기록이_여러_개면_가장_늦게_완료한_기록의_사진을_쓴다() {
+        HomeService homeService = homeService(LocalDateTime.of(2026, 10, 3, 10, 0));
+        // 저장소는 완료 시각 오름차순으로 돌려줌
+        when(completeMissionRepository.findAllByUserIdAndCreatedAtBetween(any(), any(), any()))
+                .thenReturn(List.of(
+                        completeMission(1L, LocalDateTime.of(2026, 9, 30, 9, 0)),
+                        completeMission(2L, LocalDateTime.of(2026, 9, 30, 21, 0))
+                ));
+
+        WeeklyPhotoDayResponse wednesday = homeService.getHome(EMAIL).weeklyPhotos().days().get(2);
+
+        assertThat(wednesday.completeMissionId()).isEqualTo(2L);
+        assertThat(wednesday.imageUrl()).isEqualTo("record-2.jpg");
+    }
+
+    @Test
+    void 따로_올린_주간_사진은_홈에_쓰지_않는다() {
+        homeService(LocalDateTime.of(2026, 10, 3, 10, 0)).getHome(EMAIL);
+
+        verifyNoInteractions(weeklyPhotoRepository);
     }
 
     @Test
@@ -95,16 +119,18 @@ class HomeServiceTest {
     @Test
     void 일요일까지는_같은_주이고_월요일이_되면_새_주가_시작된다() {
         homeService(LocalDateTime.of(2026, 10, 4, 23, 59)).getHome(EMAIL);
-        verify(weeklyPhotoRepository).findByUserIdAndPhotoDateBetween(1L, LocalDate.of(2026, 9, 28), LocalDate.of(2026, 10, 4));
+        verify(completeMissionRepository).findAllByUserIdAndCreatedAtBetween(
+                1L, LocalDateTime.of(2026, 9, 28, 0, 0), LocalDateTime.of(2026, 10, 5, 0, 0));
 
         homeService(LocalDateTime.of(2026, 10, 5, 0, 0)).getHome(EMAIL);
-        verify(weeklyPhotoRepository).findByUserIdAndPhotoDateBetween(1L, LocalDate.of(2026, 10, 5), LocalDate.of(2026, 10, 11));
+        verify(completeMissionRepository).findAllByUserIdAndCreatedAtBetween(
+                1L, LocalDateTime.of(2026, 10, 5, 0, 0), LocalDateTime.of(2026, 10, 12, 0, 0));
     }
 
     @Test
-    void 이번_달_완료_일수는_하루에_여러_번_완료해도_1일로_센다() {
+    void 이번_달_기록_일수는_하루에_여러_번_기록해도_1일로_센다() {
         HomeService homeService = homeService(LocalDateTime.of(2026, 10, 3, 10, 0));
-        when(userMissionRepository.findCompletedAtBetween(1L, LocalDateTime.of(2026, 10, 1, 0, 0), LocalDateTime.of(2026, 11, 1, 0, 0)))
+        when(completeMissionRepository.findCompletedAtByUserIdBetween(1L, LocalDateTime.of(2026, 10, 1, 0, 0), LocalDateTime.of(2026, 11, 1, 0, 0)))
                 .thenReturn(List.of(
                         LocalDateTime.of(2026, 10, 1, 9, 0),
                         LocalDateTime.of(2026, 10, 1, 21, 0),
@@ -207,7 +233,7 @@ class HomeServiceTest {
 
     private HomeService homeService(LocalDateTime now) {
         Clock clock = Clock.fixed(now.atZone(KST).toInstant(), KST);
-        return new HomeService(weeklyPhotoRepository, userMissionRepository, completeMissionRepository, notificationRepository, userRepository, s3Uploader, clock);
+        return new HomeService(weeklyPhotoRepository, completeMissionRepository, notificationRepository, userRepository, s3Uploader, clock);
     }
 
     private CompleteMission completeMission(Long id, LocalDateTime completedAt) {

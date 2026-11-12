@@ -9,8 +9,11 @@ import org.example.gudyeeday.domain.complete.dto.response.CompleteMissionRespons
 import org.example.gudyeeday.domain.complete.entity.CompleteMission;
 import org.example.gudyeeday.domain.complete.exception.CompleteErrorCode;
 import org.example.gudyeeday.domain.complete.repository.CompleteMissionRepository;
+import org.example.gudyeeday.domain.mission.entity.Mission;
+import org.example.gudyeeday.domain.mission.entity.MissionBookmark;
 import org.example.gudyeeday.domain.mission.entity.UserMission;
 import org.example.gudyeeday.domain.mission.exception.MissionErrorCode;
+import org.example.gudyeeday.domain.mission.repository.MissionBookmarkRepository;
 import org.example.gudyeeday.domain.mission.repository.UserMissionRepository;
 import org.example.gudyeeday.domain.mypage.dto.response.ProfileResponse;
 import org.example.gudyeeday.domain.user.entity.User;
@@ -34,6 +37,7 @@ public class CompleteService {
     private final UserRepository userRepository;
     private final UserMissionRepository userMissionRepository;
     private final CompleteMissionRepository completeMissionRepository;
+    private final MissionBookmarkRepository missionBookmarkRepository;
     private final S3Uploader s3Uploader;
 
     @Transactional
@@ -56,7 +60,14 @@ public class CompleteService {
 
         String imageUrl = s3Uploader.upload(image, "complete-mission");
 
-        userMission.complete(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        userMission.complete(now);
+
+        // 보관함에 없던 미션은 보관함에 저장해 완료한 미션 목록에 나오게 함 (in-progress/complete와 동일)
+        Mission mission = userMission.getMission();
+        if (missionBookmarkRepository.findByUserIdAndMissionId(user.getId(), mission.getId()).isEmpty()) {
+            missionBookmarkRepository.save(MissionBookmark.createMissionBookmark(user, mission, now));
+        }
 
         CompleteMission completeMission = CompleteMission.create(
                 user,

@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum MissionErrorCode implements BaseCode {
 
+    NOT_CUSTOM_MISSION(HttpStatus.BAD_REQUEST, "MISSION4001", "나만의 굳이 미션만 수정할 수 있습니다."),
+
     MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION4041", "존재하지 않는 미션입니다."),
     IN_PROGRESS_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION4042", "진행중인 미션이 없습니다."),
     BOOKMARK_NOT_FOUND(HttpStatus.NOT_FOUND, "MISSION4043", "보관함에 저장되지 않은 미션입니다."),
