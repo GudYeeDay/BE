@@ -38,7 +38,12 @@ public class CompleteController {
 
     private final CompleteService completeService;
 
-    @Operation(summary = "미션 완료하기", description = "")
+    @Operation(
+            summary = "미션 완료하기",
+            description = """
+                    진행한 미션을 사진(image, 필수)과 위치(location, 최대 200자)·내용(content, 최대 500자)으로 기록하고 완료 상태로 바꿉니다.
+                    보관함에 없던 미션은 보관함에 저장되어 완료한 미션 목록에 나옵니다. 기록 사진은 홈 주간 사진에도 쓰입니다.
+                    빈 사진이면 400(COMPLETE6003), 내 미션이 아니면 403(COMPLETE6002), 이미 기록한 미션이면 409(COMPLETE6001), 존재하지 않는 미션이면 404(MISSION4041)를 반환합니다.""")
     @PostMapping(value = "/{userMissionId}",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<CompleteMissionResponse>> completeMission(
