@@ -2,6 +2,7 @@ package org.example.gudyeeday.domain.mission.service;
 
 import org.example.gudyeeday.common.exception.CustomException;
 import org.example.gudyeeday.domain.mission.dto.request.CustomMissionCreateRequest;
+import org.example.gudyeeday.domain.mission.dto.request.CustomMissionUpdateRequest;
 import org.example.gudyeeday.domain.mission.dto.response.BookmarkDetailResponse;
 import org.example.gudyeeday.domain.mission.dto.response.BookmarkItemResponse;
 import org.example.gudyeeday.domain.mission.dto.response.BookmarkListResponse;
@@ -170,6 +171,41 @@ class BookmarkServiceTest {
         assertThat(result.savedDate()).isEqualTo("9.26");
         assertThat(result.custom()).isTrue();
         verify(missionRepository).save(argThat(m -> m.getCreator() == user));
+    }
+
+    @Test
+    void 나만의_굳이_미션은_이름과_설명을_수정할_수_있다() {
+        Mission custom = Mission.createCustomMission(user, "동네 산책", "굳이 돌아가기");
+        ReflectionTestUtils.setField(custom, "id", 50L);
+        MissionBookmark customBookmark = bookmark(200L, custom, LocalDateTime.of(2026, 9, 1, 9, 0));
+        when(missionBookmarkRepository.findWithMissionByIdAndUserId(200L, 1L)).thenReturn(Optional.of(customBookmark));
+
+        BookmarkDetailResponse result = bookmarkService.updateCustomMission(EMAIL, 200L, new CustomMissionUpdateRequest(" 한강 산책 ", " 굳이 한 바퀴 더 "));
+
+        assertThat(result.bookmarkId()).isEqualTo(200L);
+        assertThat(result.title()).isEqualTo("한강 산책");
+        assertThat(result.description()).isEqualTo("굳이 한 바퀴 더");
+        assertThat(result.savedDate()).isEqualTo("9.01");
+        assertThat(custom.getTitle()).isEqualTo("한강 산책");
+    }
+
+    @Test
+    void 추천_미션을_저장한_항목은_수정할_수_없다() {
+        when(missionBookmarkRepository.findWithMissionByIdAndUserId(100L, 1L)).thenReturn(Optional.of(saved));
+
+        assertThatThrownBy(() -> bookmarkService.updateCustomMission(EMAIL, 100L, new CustomMissionUpdateRequest("제목", "설명")))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(MissionErrorCode.NOT_CUSTOM_MISSION);
+        assertThat(saved.getMission().getTitle()).isEqualTo("미션1");
+    }
+
+    @Test
+    void 본인_보관함에_없는_항목은_수정할_수_없다() {
+        when(missionBookmarkRepository.findWithMissionByIdAndUserId(999L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> bookmarkService.updateCustomMission(EMAIL, 999L, new CustomMissionUpdateRequest("제목", "설명")))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode").isEqualTo(MissionErrorCode.BOOKMARK_NOT_FOUND);
     }
 
     @Test

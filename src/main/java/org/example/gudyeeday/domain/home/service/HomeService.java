@@ -13,7 +13,6 @@ import org.example.gudyeeday.domain.home.dto.response.WeeklyPhotosResponse;
 import org.example.gudyeeday.domain.home.entity.WeeklyPhoto;
 import org.example.gudyeeday.domain.home.exception.HomeErrorCode;
 import org.example.gudyeeday.domain.home.repository.WeeklyPhotoRepository;
-import org.example.gudyeeday.domain.mission.repository.UserMissionRepository;
 import org.example.gudyeeday.domain.notification.repository.NotificationRepository;
 import org.example.gudyeeday.domain.user.entity.User;
 import org.example.gudyeeday.domain.user.exception.AuthErrorCode;
@@ -48,7 +47,6 @@ public class HomeService {
     private static final int PAST_RECORD_COUNT = 5;
 
     private final WeeklyPhotoRepository weeklyPhotoRepository;
-    private final UserMissionRepository userMissionRepository;
     private final CompleteMissionRepository completeMissionRepository;
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
@@ -72,6 +70,8 @@ public class HomeService {
 
     // 오늘(KST) 사진 업로드, 이미 있으면 교체
     // 사용자 row에 락을 걸어 같은 사용자의 동시 업로드를 직렬화
+    // 홈 주간 사진은 기록 사진을 쓰므로 여기서 올린 사진은 홈에 나오지 않음. FE가 호출을 뺀 뒤 API와 함께 삭제 예정
+    @Deprecated
     @Transactional
     public WeeklyPhotoResponse uploadTodayPhoto(String email, MultipartFile file) {
         validateImage(file);
@@ -117,26 +117,34 @@ public class HomeService {
                 .toList();
     }
 
+    // 주간 사진은 그날 남긴 기록의 사진을 씀. 하루에 기록이 여러 개면 가장 늦게 완료한 기록의 사진
+    // 기록을 지우면 그날 남은 기록의 사진으로 바뀌고, 남은 기록이 없으면 빈 칸이 됨
     private WeeklyPhotosResponse getWeeklyPhotos(User user, LocalDate today, LocalDate startDate) {
         LocalDate endDate = startDate.plusDays(DayOfWeek.values().length - 1);
 
-        Map<LocalDate, WeeklyPhoto> photosByDate = weeklyPhotoRepository
-                .findByUserIdAndPhotoDateBetween(user.getId(), startDate, endDate).stream()
-                .collect(Collectors.toMap(WeeklyPhoto::getPhotoDate, Function.identity()));
+        // 완료 시각 오름차순이라 같은 날짜는 뒤에 오는 기록(가장 늦은 기록)이 남음
+        Map<LocalDate, CompleteMission> recordsByDate = completeMissionRepository
+                .findAllByUserIdAndCreatedAtBetween(user.getId(), startDate.atStartOfDay(), endDate.plusDays(1).atStartOfDay())
+                .stream()
+                .collect(Collectors.toMap(
+                        record -> record.getUserMission().getCompletedAt().toLocalDate(),
+                        Function.identity(),
+                        (earlier, later) -> later
+                ));
 
         List<WeeklyPhotoDayResponse> days = startDate.datesUntil(endDate.plusDays(1))
-                .map(date -> WeeklyPhotoDayResponse.of(date, today, photosByDate.get(date)))
+                .map(date -> WeeklyPhotoDayResponse.of(date, today, recordsByDate.get(date)))
                 .toList();
 
         return new WeeklyPhotosResponse(startDate, endDate, days);
     }
 
-    // 이번 달 완료 기록을 날짜 단위로 중복 제거해 셈
+    // 이번 달 남긴 기록을 날짜 단위로 중복 제거해 셈. 기록을 지우면 그날이 빠짐
     private int countMonthlyCompletedDays(User user, LocalDate today) {
         LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
         LocalDateTime nextMonthStart = monthStart.plusMonths(1);
 
-        return (int) userMissionRepository.findCompletedAtBetween(user.getId(), monthStart, nextMonthStart).stream()
+        return (int) completeMissionRepository.findCompletedAtByUserIdBetween(user.getId(), monthStart, nextMonthStart).stream()
                 .map(LocalDateTime::toLocalDate)
                 .distinct()
                 .count();

@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.response.ApiResponse;
 import org.example.gudyeeday.domain.mission.dto.request.CustomMissionCreateRequest;
+import org.example.gudyeeday.domain.mission.dto.request.CustomMissionUpdateRequest;
 import org.example.gudyeeday.domain.mission.dto.response.BookmarkDetailResponse;
 import org.example.gudyeeday.domain.mission.dto.response.BookmarkListResponse;
 import org.example.gudyeeday.domain.mission.dto.response.InProgressMissionResponse;
@@ -58,6 +59,20 @@ public class BookmarkController {
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CustomMissionCreateRequest request) {
         return ResponseEntity.ok(ApiResponse.onSuccess(bookmarkService.createCustomMission(userDetails.getUsername(), request)));
+    }
+
+    @Operation(
+            summary = "나만의 굳이 미션 수정",
+            description = """
+                    내가 만든 나만의 굳이 미션의 이름(최대 100자)과 간단한 설명(최대 500자)을 고칩니다. 응답은 저장한 미션 상세와 같습니다.
+                    추천 미션을 저장한 항목(custom=false)은 400(MISSION4001), 본인 보관함에 없는 항목이면 404(MISSION4043)를 반환합니다.
+                    미션 자체가 바뀌므로 이 미션으로 남긴 기록과 진행중 미션에도 바뀐 이름·설명이 보입니다.""")
+    @PutMapping("/{bookmarkId}")
+    public ResponseEntity<ApiResponse<BookmarkDetailResponse>> updateCustomMission(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long bookmarkId,
+            @Valid @RequestBody CustomMissionUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.onSuccess(bookmarkService.updateCustomMission(userDetails.getUsername(), bookmarkId, request)));
     }
 
     @Operation(

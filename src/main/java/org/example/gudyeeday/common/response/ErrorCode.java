@@ -14,6 +14,7 @@ public enum ErrorCode implements BaseCode {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON500_1", "예기치 않은 서버 에러가 발생했습니다."),
     DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "COMMON409_1","중복된 데이터가 이미 존재합니다."),
     INVALID_DATA_RELATION(HttpStatus.BAD_REQUEST, "COMMON400_2","연관된 데이터가 존재하지 않거나 참조할 수 없습니다."),
+    FORBIDDEN(HttpStatus.FORBIDDEN, "COMMON403_1", "접근 권한이 없습니다."),
     NOT_NULL_VIOLATION(HttpStatus.BAD_REQUEST, "COMMON400_3","필수 데이터 누락으로 처리할 수 없습니다.");
     private final HttpStatus httpStatus;
     private final String code;

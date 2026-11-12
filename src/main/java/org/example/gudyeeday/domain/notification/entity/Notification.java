@@ -58,4 +58,14 @@ public class Notification extends BaseEntity {
             this.readAt = readAt;
         }
     }
+
+    // 제목을 직접 정하는 알림 (서비스 업데이트 등)
+    public static Notification createNotification(User user, NotificationType type, String title, String content) {
+        return Notification.builder()
+                .user(user)
+                .type(type)
+                .title(title)
+                .content(content)
+                .build();
+    }
 }

@@ -61,6 +61,12 @@ public class Mission extends BaseEntity {
                 .build();
     }
 
+    // 나만의 굳이 미션 이름·설명 수정
+    public void updateCustomMission(String title, String description) {
+        this.title = title;
+        this.description = description;
+    }
+
     public boolean isCustom() {
         return creator != null;
     }
