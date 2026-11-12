@@ -24,20 +24,6 @@ public interface UserMissionRepository extends JpaRepository<UserMission, Long> 
     @EntityGraph(attributePaths = {"user", "mission"})
     List<UserMission> findAllByStatus(UserMissionStatus status);
 
-    // 기간 [from, to) 내 완료 시각 목록
-    @Query("""
-            select um.completedAt from UserMission um
-            where um.user.id = :userId
-              and um.status = org.example.gudyeeday.domain.mission.enums.UserMissionStatus.COMPLETED
-              and um.completedAt >= :from
-              and um.completedAt < :to
-            """)
-    List<LocalDateTime> findCompletedAtBetween(
-            @Param("userId") Long userId,
-            @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to
-    );
-
     Long countByUserId(Long userId);
 
     Long countByUserIdAndStatus(Long userId, UserMissionStatus status);

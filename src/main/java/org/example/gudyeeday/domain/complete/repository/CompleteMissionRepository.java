@@ -49,6 +49,18 @@ public interface CompleteMissionRepository extends JpaRepository<CompleteMission
             """)
     List<CompleteMission> findWithMissionByIdIn(@Param("ids") Collection<Long> ids);
 
+    // 기간 [start, end) 안에 남긴 기록의 완료 시각 (홈 이번 달 기록 일수)
+    @Query("""
+            SELECT um.completedAt FROM CompleteMission cm
+            JOIN cm.userMission um
+            WHERE cm.user.id = :userId
+              AND um.completedAt >= :start
+              AND um.completedAt < :end
+            """)
+    List<LocalDateTime> findCompletedAtByUserIdBetween(@Param("userId") Long userId,
+                                                       @Param("start") LocalDateTime start,
+                                                       @Param("end") LocalDateTime end);
+
     Long countByUserId(Long userId);
 
     @Query("""

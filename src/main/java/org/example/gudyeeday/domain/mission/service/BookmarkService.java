@@ -3,6 +3,7 @@ package org.example.gudyeeday.domain.mission.service;
 import lombok.RequiredArgsConstructor;
 import org.example.gudyeeday.common.exception.CustomException;
 import org.example.gudyeeday.domain.mission.dto.request.CustomMissionCreateRequest;
+import org.example.gudyeeday.domain.mission.dto.request.CustomMissionUpdateRequest;
 import org.example.gudyeeday.domain.mission.dto.response.BookmarkDetailResponse;
 import org.example.gudyeeday.domain.mission.dto.response.BookmarkItemResponse;
 import org.example.gudyeeday.domain.mission.dto.response.BookmarkListResponse;
@@ -79,6 +80,22 @@ public class BookmarkService {
                 MissionBookmark.createMissionBookmark(user, mission, LocalDateTime.now(clock))
         );
 
+        return BookmarkDetailResponse.from(bookmark);
+    }
+
+    // 나만의 굳이 미션 수정 (추천 미션을 저장한 항목은 수정 불가)
+    // 미션 자체를 고치므로 이 미션으로 남긴 기록·진행중 미션에도 바뀐 이름·설명이 보임
+    @Transactional
+    public BookmarkDetailResponse updateCustomMission(String email, Long bookmarkId, CustomMissionUpdateRequest request) {
+        User user = getUser(email);
+        MissionBookmark bookmark = getBookmark(user, bookmarkId);
+        Mission mission = bookmark.getMission();
+
+        if (!mission.isCustom() || !mission.isAccessibleBy(user)) {
+            throw new CustomException(MissionErrorCode.NOT_CUSTOM_MISSION);
+        }
+
+        mission.updateCustomMission(request.title().strip(), request.description().strip());
         return BookmarkDetailResponse.from(bookmark);
     }
 
