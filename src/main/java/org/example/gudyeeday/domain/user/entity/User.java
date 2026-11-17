@@ -40,6 +40,9 @@ public class User extends BaseEntity {
     @Column(name = "provider_id", length = 255)
     private String providerId;
 
+    @Column(name = "apple_id", unique = true, length = 255)
+    private String appleId;
+
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RefreshToken> refreshTokens = new ArrayList<>();
@@ -77,6 +80,20 @@ public class User extends BaseEntity {
                 .build();
     }
 
+    // 소셜(애플) 회원가입 생성 메서드
+    public static User createAppleUser(
+            String email,
+            String name,
+            String appleId
+    ) {
+        return User.builder()
+                .email(email)
+                .name(name)
+                .provider(Provider.APPLE)
+                .appleId(appleId)
+                .build();
+    }
+
     // 닉네임 수정
     public void updateName(String name) {
         this.name = name;
@@ -89,6 +106,10 @@ public class User extends BaseEntity {
     public boolean hasGoogleLinked() {
         return this.providerId != null;
     }
+
+    public void linkAppleAccount(String appleId) {this.appleId = appleId;}
+
+    public boolean hasAppleLinked() {return this.appleId != null;}
 
     public boolean hasPassword() {
         return this.password != null && !this.password.isBlank();

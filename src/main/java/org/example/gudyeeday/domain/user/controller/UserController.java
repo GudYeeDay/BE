@@ -91,4 +91,17 @@ public class UserController {
      return ResponseEntity.ok(ApiResponse.onSuccess("비밀번호가 성공적으로 재설정되었습니다."));
     }
 
+    @Operation(
+            summary = "애플 로그인",
+            description = """
+                    앱에서 애플 로그인 후 받은 identityToken으로 로그인합니다.
+                    - 처음 가입이면 계정을 만들고 isNewUser=true를 반환합니다.
+                    - 같은 이메일의 기존 계정이 있으면 애플 계정을 연동하고 그 계정으로 로그인합니다.
+                    - name: 애플은 이름을 최초 로그인 때만 앱에 주므로, 그때 받은 이름을 보내주세요 (없으면 '사용자').
+                    토큰이 잘못됐거나 만료됐으면 401(AUTH4013)을 반환합니다.""")
+    @PostMapping("/login/apple")
+    public ResponseEntity<ApiResponse<AppleLoginResponse>> appleLogin(@Valid @RequestBody AppleLoginRequest request) {
+        return ResponseEntity.ok(ApiResponse.onSuccess(userService.appleLogin(request)));
+    }
+
 }
