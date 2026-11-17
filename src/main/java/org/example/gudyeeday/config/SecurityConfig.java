@@ -53,6 +53,7 @@ public class SecurityConfig {
                                 "/api/auth/signup",
                                 "/api/auth/login",
                                 "/api/auth/login/google",
+                                "/api/auth/login/apple",
                                 "/api/auth/reissue",
                                 "/api/auth/email/**",
                                 "/api/auth/passwordReset",
