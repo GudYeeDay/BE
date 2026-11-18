@@ -3,6 +3,7 @@ package org.example.gudyeeday.domain.notification.repository;
 import org.example.gudyeeday.domain.notification.entity.Notification;
 import org.example.gudyeeday.domain.notification.enums.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -27,4 +28,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             """)
     List<Long> findUserIdsByTypeAndCreatedAtSince(@Param("type") NotificationType type,
                                                   @Param("since") LocalDateTime since);
+
+    // 회원 탈퇴
+    @Modifying
+    @Query("delete from Notification n where n.user.id = :userId")
+    int deleteAllByUserId(@Param("userId") Long userId);
 }

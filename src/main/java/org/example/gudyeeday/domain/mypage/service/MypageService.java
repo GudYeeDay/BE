@@ -39,7 +39,7 @@ public class MypageService {
 
         Long unCompleteMissionCount = userMissionCount - completeMissionCount;
 
-        return  new ProfileResponse(user.getName(), user.getDaysSinceSignup(), userMissionCount, completeMissionCount, unCompleteMissionCount);
+        return  new ProfileResponse(user.getName(), user.getDaysSinceSignup(), userMissionCount, completeMissionCount, unCompleteMissionCount, user.hasAppleLinked());
 
     }
 
