@@ -4,6 +4,7 @@ import org.example.gudyeeday.domain.mission.entity.Mission;
 import org.example.gudyeeday.domain.mission.enums.DayType;
 import org.example.gudyeeday.domain.mission.enums.Season;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -33,4 +34,9 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
             @Param("dayTypes") Collection<DayType> dayTypes,
             @Param("seasons") Collection<Season> seasons
     );
+
+    // 회원 탈퇴: 내가 만든 나만의 굳이 미션 삭제
+    @Modifying
+    @Query("delete from Mission m where m.creator.id = :userId")
+    int deleteAllByCreatorId(@Param("userId") Long userId);
 }

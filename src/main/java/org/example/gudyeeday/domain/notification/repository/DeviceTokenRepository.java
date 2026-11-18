@@ -3,6 +3,7 @@ package org.example.gudyeeday.domain.notification.repository;
 import org.example.gudyeeday.domain.notification.entity.DeviceToken;
 import org.example.gudyeeday.domain.notification.push.PushTarget;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,4 +26,9 @@ public interface DeviceTokenRepository extends JpaRepository<DeviceToken, Long> 
     long deleteByUserIdAndToken(Long userId, String token);
 
     long deleteByTokenIn(Collection<String> tokens);
+
+    // 회원 탈퇴
+    @Modifying
+    @Query("delete from DeviceToken d where d.user.id = :userId")
+    int deleteAllByUserId(@Param("userId") Long userId);
 }
