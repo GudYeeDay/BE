@@ -2,6 +2,7 @@ package org.example.gudyeeday.domain.mission.repository;
 
 import org.example.gudyeeday.domain.mission.entity.MissionBookmark;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -28,4 +29,13 @@ public interface MissionBookmarkRepository extends JpaRepository<MissionBookmark
               and b.user.id = :userId
             """)
     Optional<MissionBookmark> findWithMissionByIdAndUserId(@Param("bookmarkId") Long bookmarkId, @Param("userId") Long userId);
+
+    // 회원 탈퇴: 내 보관함 + 내가 만든 나만의 굳이가 담긴 보관함 삭제
+    @Modifying
+    @Query("""
+            delete from MissionBookmark b
+            where b.user.id = :userId
+               or b.mission.id in (select m.id from Mission m where m.creator.id = :userId)
+            """)
+    int deleteAllForWithdraw(@Param("userId") Long userId);
 }

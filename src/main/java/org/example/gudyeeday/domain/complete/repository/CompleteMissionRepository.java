@@ -6,6 +6,7 @@ import org.example.gudyeeday.domain.mission.enums.UserMissionStatus;
 import org.example.gudyeeday.domain.user.entity.User;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -76,5 +77,25 @@ public interface CompleteMissionRepository extends JpaRepository<CompleteMission
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );
+
+    // 회원 탈퇴: 지울 기록 사진 주소 (내 기록 + 내가 만든 나만의 굳이에 달린 기록)
+    @Query("""
+            select cm.imageUrl from CompleteMission cm
+            where cm.user.id = :userId
+               or cm.userMission.mission.creator.id = :userId
+            """)
+    List<String> findImageUrlsForWithdraw(@Param("userId") Long userId);
+
+    // 회원 탈퇴: 내 기록 + 내가 만든 나만의 굳이에 달린 기록 삭제
+    @Modifying
+    @Query("""
+            delete from CompleteMission cm
+            where cm.user.id = :userId
+               or cm.userMission.id in (
+                   select um.id from UserMission um
+                   where um.mission.id in (select m.id from Mission m where m.creator.id = :userId)
+               )
+            """)
+    int deleteAllForWithdraw(@Param("userId") Long userId);
 
 }

@@ -22,6 +22,10 @@ public enum AuthErrorCode implements BaseCode {
     SOCIAL_LOGIN_REQUIRED(HttpStatus.BAD_REQUEST, "AUTH4015", "소셜 로그인으로 가입된 계정입니다. 구글 로그인을 이용해주세요."),
     SAME_AS_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "AUTH4016", "새 비밀번호는 현재 비밀번호와 달라야 합니다."),
     ALREADY_LINKED_APPLE_ACCOUNT(HttpStatus.CONFLICT, "AUTH4017", "이미 다른 애플 계정과 연동된 이메일입니다."),
+    APPLE_AUTH_CODE_REQUIRED(HttpStatus.BAD_REQUEST, "AUTH4018", "애플 계정이 연동된 회원은 탈퇴할 때 애플 재인증(appleAuthorizationCode)이 필요합니다."),
+    INVALID_APPLE_AUTH_CODE(HttpStatus.BAD_REQUEST, "AUTH4019", "애플 인증 코드가 유효하지 않거나 만료되었습니다. 애플 로그인을 다시 한 뒤 시도해주세요."),
+    APPLE_ACCOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH4020", "탈퇴하려는 계정에 연동된 애플 계정이 아닙니다."),
+    APPLE_REVOKE_FAILED(HttpStatus.BAD_GATEWAY, "AUTH5021", "애플 연동 해제에 실패했습니다. 잠시 후 다시 시도해주세요."),
 
 
     FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH4030", "접근 권한이 없습니다."),

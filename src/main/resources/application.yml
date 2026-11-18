@@ -54,6 +54,10 @@ apple:
   oauth:
     # 애플 identity token의 aud 값. iOS 앱은 번들 ID, 웹/안드로이드는 Services ID (여러 개면 쉼표로 구분)
     client-ids: ${APPLE_CLIENT_IDS:}
+    team-id: ${APPLE_TEAM_ID:}
+    key-id: ${APPLE_KEY_ID:}
+    private-key-base64: ${APPLE_PRIVATE_KEY_BASE64:}
+    redirect-uri: ${APPLE_REDIRECT_URI:}
 
 
 app:
