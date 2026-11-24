@@ -33,6 +33,9 @@ public class CompleteMission extends BaseEntity {
     @Column(name = "content", length = 500)
     private String content;
 
+    @Column(name = "represent", nullable = false)
+    private boolean represent = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -42,13 +45,14 @@ public class CompleteMission extends BaseEntity {
     private UserMission userMission;
 
     public static CompleteMission create(User user, UserMission userMission, String imageUrl,
-                                         String location, String content) {
+                                         String location, String content, boolean represent) {
         return CompleteMission.builder()
                 .user(user)
                 .userMission(userMission)
                 .imageUrl(imageUrl)
                 .location(location)
                 .content(content)
+                .represent(represent)
                 .build();
     }
 
@@ -59,6 +63,10 @@ public class CompleteMission extends BaseEntity {
 
     public void updateImage(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public void updateRepresent(boolean represent) {
+        this.represent = represent;
     }
 
 }

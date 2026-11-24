@@ -43,9 +43,9 @@ public class CalenderService {
         LocalDateTime end = yearMonth.plusMonths(1).atDay(1).atStartOfDay();
 
         List<CalenderRecordResponse> records = completeMissionRepository
-                .findAllByUserIdAndCreatedAtBetween(user.getId(), start, end)
+                .findMonthlyRepresents(user.getId(), start, end)
                 .stream()
-                .filter(cm -> cm.getCreatedAt().isBefore(end))
+                // 혹시 하루에 대표가 2개여도 최신 1개만 남김
                 .collect(Collectors.toMap(
                         cm -> cm.getCreatedAt().toLocalDate(),
                         Function.identity(),

@@ -10,7 +10,7 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 10MB
+      max-file-size: 100MB
       max-request-size: 100MB # 프로젝트 장표 최대 10MB*10장 첨부 가능
 
   jpa:
