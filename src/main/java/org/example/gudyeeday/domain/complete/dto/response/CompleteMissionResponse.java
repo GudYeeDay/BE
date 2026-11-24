@@ -11,7 +11,8 @@ public record CompleteMissionResponse(
         String location,
         String title,
         LocalDate completeAt,
-        String content
+        String content,
+        Boolean represent
 ) {
     public static CompleteMissionResponse from(CompleteMission completeMission) {
         return new CompleteMissionResponse(
@@ -20,7 +21,8 @@ public record CompleteMissionResponse(
                 completeMission.getLocation(),
                 completeMission.getUserMission().getMission().getTitle(),
                 completeMission.getUserMission().getCompletedAt().toLocalDate(),
-                completeMission.getContent()
+                completeMission.getContent(),
+                completeMission.isRepresent()
         );
     }
 }

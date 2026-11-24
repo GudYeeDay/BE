@@ -107,9 +107,9 @@ public class EmailVerificationService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(senderEmail);
             message.setTo(recipientEmail);
-            message.setSubject("[GUDYEEDAY] 이메일 인증번호");
+            message.setSubject("[굳이] 이메일 인증번호");
             message.setText("""
-                    안녕하세요. GUDYEEDAY입니다.
+                    안녕하세요. [굳이]입니다.
 
                     이메일 인증번호는 %s 입니다.
                     인증번호는 5분간 유효합니다.
