@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -69,12 +70,20 @@ public class CompleteService {
             missionBookmarkRepository.save(MissionBookmark.createMissionBookmark(user, mission, now));
         }
 
+        boolean notLatest = completeMissionRepository.isRepresentNotLatest(user.getId(), LocalDate.now());
+        boolean represent = false;
+        if(!notLatest) {
+            represent = true;
+            completeMissionRepository.findRepresentByDate(user.getId(), LocalDate.now()).ifPresent(old -> old.updateRepresent(false));;
+        }
+
         CompleteMission completeMission = CompleteMission.create(
                 user,
                 userMission,
                 imageUrl,
                 request.location(),
-                request.content()
+                request.content(),
+                represent
         );
 
         CompleteMission newCompleteMission = completeMissionRepository.save(completeMission);
@@ -139,6 +148,34 @@ public class CompleteService {
 
         return deleteCompleteId;
 
+    }
+
+    @Transactional
+    public void updateRepresent(String email, Long completeMissionId) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(AuthErrorCode.USER_NOT_FOUND));
+        CompleteMission completeMission = completeMissionRepository.findById(completeMissionId)
+                .orElseThrow(() -> new CustomException(MissionErrorCode.MISSION_NOT_FOUND));
+
+        // 다른 사람의 완료 미션을 대표로 바꾸지 못하게 막기
+        if (!completeMission.getUser().getId().equals(user.getId())) {
+            throw new CustomException(CompleteErrorCode.MISSION_ACCESS_DENIED); // 실제 에러 코드 이름으로 바꿔 주세요
+        }
+
+        LocalDateTime startOfToday = completeMission.getCreatedAt().toLocalDate().atStartOfDay();
+        LocalDateTime startOfTomorrow = startOfToday.plusDays(1);
+
+        List<CompleteMission> completeMissions =
+                completeMissionRepository.findDailyCompleteMissions(user, startOfToday, startOfTomorrow);
+
+        // 같은 날 기존 대표를 모두 해제
+        completeMissions.stream()
+                .filter(CompleteMission::isRepresent)
+                .forEach(cm -> cm.updateRepresent(false));
+
+        // 자기 자신을 대표로 지정 (해제 뒤에 해야 함)
+        completeMission.updateRepresent(true);
+//        return CompleteMissionResponse.from(completeMission); // 실제 변환 방식에 맞게 바꿔 주세요
     }
 
 

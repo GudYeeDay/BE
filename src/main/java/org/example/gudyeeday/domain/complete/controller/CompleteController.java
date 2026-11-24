@@ -96,4 +96,17 @@ public class CompleteController {
         return ResponseEntity.ok(ApiResponse.onSuccess(deleteCompleteId));
     }
 
+    @Operation(
+            summary = "대표 사진 바꾸기",
+            description = "이 API 호출 후에 페이지 새로고침 해주세요.")
+    @PatchMapping(value = "/updateRepresent/{completeMissionId}")
+    public ResponseEntity<ApiResponse<String>> updateRepresent(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long completeMissionId) {
+
+        completeService.updateRepresent(userDetails.getUsername(), completeMissionId);
+
+        return ResponseEntity.ok(ApiResponse.onSuccess("대표사진이 성공적으로 변경되었습니다."));
+    }
+
 }

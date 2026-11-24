@@ -10,12 +10,15 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface CompleteMissionRepository extends JpaRepository<CompleteMission, Long> {
+
+    CompleteMission findByCompleteMissionId(Long completeMissionId);
 
     boolean existsCompleteMissionByUserMission(UserMission userMission);
 
@@ -31,6 +34,8 @@ public interface CompleteMissionRepository extends JpaRepository<CompleteMission
     List<CompleteMission> findDailyCompleteMissions(@Param("user") User user,
                                                     @Param("start") LocalDateTime start,
                                                     @Param("end") LocalDateTime end);
+
+
 
     // 완료 시각이 before 이전인 기록 id
     @Query("""
@@ -97,5 +102,70 @@ public interface CompleteMissionRepository extends JpaRepository<CompleteMission
                )
             """)
     int deleteAllForWithdraw(@Param("userId") Long userId);
+
+    /**
+     * 해당 기간에 represent=true인 기록보다 더 나중에 만들어진 기록이 있으면 true
+     */
+    @Query("""
+        select case when count(c) > 0 then true else false end
+        from CompleteMission c
+        where c.user.id = :userId
+          and c.represent = true
+          and c.createdAt >= :start and c.createdAt < :end
+          and exists (
+              select 1 from CompleteMission newer
+              where newer.user = c.user
+                and newer.createdAt >= :start and newer.createdAt < :end
+                and newer.createdAt > c.createdAt
+          )
+        """)
+    boolean existsNewerThanRepresent(@Param("userId") Long userId,
+                                     @Param("start") LocalDateTime start,
+                                     @Param("end") LocalDateTime end);
+
+    /**
+     * 특정 날짜의 대표 기록이 그날 가장 최신 기록이 아니면 true
+     */
+    default boolean isRepresentNotLatest(Long userId, LocalDate date) {
+        return existsNewerThanRepresent(
+                userId,
+                date.atStartOfDay(),
+                date.plusDays(1).atStartOfDay()
+        );
+    }
+
+    @Query("""
+        select c
+        from CompleteMission c
+        where c.user.id = :userId
+          and c.represent = true
+          and c.createdAt >= :start and c.createdAt < :end
+        """)
+    Optional<CompleteMission> findRepresentBetween(@Param("userId") Long userId,
+                                                   @Param("start") LocalDateTime start,
+                                                   @Param("end") LocalDateTime end);
+
+    /**
+     * 특정 날짜의 대표 기록 조회 (없으면 Optional.empty)
+     */
+    default Optional<CompleteMission> findRepresentByDate(Long userId, LocalDate date) {
+        return findRepresentBetween(
+                userId,
+                date.atStartOfDay(),
+                date.plusDays(1).atStartOfDay()
+        );
+    }
+
+    @Query("""
+        select cm
+        from CompleteMission cm
+        where cm.user.id = :userId
+          and cm.represent = true
+          and cm.createdAt >= :start
+          and cm.createdAt < :end
+        """)
+    List<CompleteMission> findMonthlyRepresents(@Param("userId") Long userId,
+                                                @Param("start") LocalDateTime start,
+                                                @Param("end") LocalDateTime end);
 
 }
