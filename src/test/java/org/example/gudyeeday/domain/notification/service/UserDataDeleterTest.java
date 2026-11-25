@@ -85,7 +85,7 @@ class UserDataDeleterTest {
         UserMission done = UserMission.startMission(user, baseMission);
         done.complete(now);
         em.persist(done);
-        em.persist(CompleteMission.create(user, done, "https://bucket/complete-mission/a.jpg", "카페", "좋았다"));
+        em.persist(CompleteMission.create(user, done, "https://bucket/complete-mission/a.jpg", "카페", "좋았다", false));
         em.persist(WeeklyPhoto.createWeeklyPhoto(user, now.toLocalDate(), "https://bucket/complete-mission/a.jpg"));
         em.persist(UserMission.startMission(user, customMission));
         em.persist(MissionBookmark.createMissionBookmark(user, baseMission, now));
@@ -99,7 +99,7 @@ class UserDataDeleterTest {
         UserMission otherDone = UserMission.startMission(other, baseMission);
         otherDone.complete(now);
         em.persist(otherDone);
-        em.persist(CompleteMission.create(other, otherDone, "https://bucket/complete-mission/b.jpg", null, null));
+        em.persist(CompleteMission.create(other, otherDone, "https://bucket/complete-mission/b.jpg", null, null, false));
         em.persist(WeeklyPhoto.createWeeklyPhoto(other, LocalDate.of(2026, 11, 19), "https://bucket/complete-mission/b.jpg"));
         em.persist(MissionBookmark.createMissionBookmark(other, baseMission, now));
         em.persist(Notification.createNotification(other, NotificationType.DAILY_MISSION, "내용"));

@@ -11,7 +11,7 @@ public record WeeklyPhotoDayResponse(
         DayOfWeek dayOfWeek,
         // 오늘(KST) 여부
         boolean today,
-        // 그날 기록 중 사진으로 쓴 기록. 그날 기록이 없으면 null
+        // 그날의 대표 기록. 대표 기록이 없으면 null
         Long completeMissionId,
         String imageUrl
 ) {
