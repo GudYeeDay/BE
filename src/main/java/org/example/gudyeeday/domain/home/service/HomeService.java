@@ -117,19 +117,19 @@ public class HomeService {
                 .toList();
     }
 
-    // 주간 사진은 그날 남긴 기록의 사진을 씀. 하루에 기록이 여러 개면 가장 늦게 완료한 기록의 사진
-    // 기록을 지우면 그날 남은 기록의 사진으로 바뀌고, 남은 기록이 없으면 빈 칸이 됨
+    // 주간 사진은 그날의 대표 기록(represent = true)의 사진을 씀. 캘린더와 같은 기준
+    // 그날 대표 기록이 없으면 빈 칸이 됨
     private WeeklyPhotosResponse getWeeklyPhotos(User user, LocalDate today, LocalDate startDate) {
         LocalDate endDate = startDate.plusDays(DayOfWeek.values().length - 1);
 
-        // 완료 시각 오름차순이라 같은 날짜는 뒤에 오는 기록(가장 늦은 기록)이 남음
+        // 혹시 하루에 대표가 2개여도 가장 늦게 만든 1개만 남김
         Map<LocalDate, CompleteMission> recordsByDate = completeMissionRepository
-                .findAllByUserIdAndCreatedAtBetween(user.getId(), startDate.atStartOfDay(), endDate.plusDays(1).atStartOfDay())
+                .findMonthlyRepresents(user.getId(), startDate.atStartOfDay(), endDate.plusDays(1).atStartOfDay())
                 .stream()
                 .collect(Collectors.toMap(
-                        record -> record.getUserMission().getCompletedAt().toLocalDate(),
+                        record -> record.getCreatedAt().toLocalDate(),
                         Function.identity(),
-                        (earlier, later) -> later
+                        (a, b) -> a.getCreatedAt().isAfter(b.getCreatedAt()) ? a : b
                 ));
 
         List<WeeklyPhotoDayResponse> days = startDate.datesUntil(endDate.plusDays(1))

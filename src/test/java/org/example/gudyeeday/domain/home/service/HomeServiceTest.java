@@ -66,7 +66,7 @@ class HomeServiceTest {
         LocalDate monday = LocalDate.of(2026, 9, 28);
         LocalDate sunday = LocalDate.of(2026, 10, 4);
         CompleteMission tuesdayRecord = completeMission(5L, LocalDateTime.of(2026, 9, 29, 18, 0));
-        when(completeMissionRepository.findAllByUserIdAndCreatedAtBetween(1L, monday.atStartOfDay(), sunday.plusDays(1).atStartOfDay()))
+        when(completeMissionRepository.findMonthlyRepresents(1L, monday.atStartOfDay(), sunday.plusDays(1).atStartOfDay()))
                 .thenReturn(List.of(tuesdayRecord));
 
         HomeResponse result = homeService.getHome(EMAIL);
@@ -87,13 +87,21 @@ class HomeServiceTest {
     }
 
     @Test
-    void 하루에_기록이_여러_개면_가장_늦게_완료한_기록의_사진을_쓴다() {
+    void 주간_사진은_대표_기록만_조회해_그날_사진으로_쓴다() {
+        homeService(LocalDateTime.of(2026, 10, 3, 10, 0)).getHome(EMAIL);
+
+        verify(completeMissionRepository).findMonthlyRepresents(any(), any(), any());
+        verify(completeMissionRepository, never()).findAllByUserIdAndCreatedAtBetween(any(), any(), any());
+    }
+
+    @Test
+    void 하루에_대표_기록이_여러_개면_가장_늦게_만든_기록의_사진을_쓴다() {
         HomeService homeService = homeService(LocalDateTime.of(2026, 10, 3, 10, 0));
-        // 저장소는 완료 시각 오름차순으로 돌려줌
-        when(completeMissionRepository.findAllByUserIdAndCreatedAtBetween(any(), any(), any()))
+        // 대표 조회는 순서를 보장하지 않음
+        when(completeMissionRepository.findMonthlyRepresents(any(), any(), any()))
                 .thenReturn(List.of(
-                        completeMission(1L, LocalDateTime.of(2026, 9, 30, 9, 0)),
-                        completeMission(2L, LocalDateTime.of(2026, 9, 30, 21, 0))
+                        completeMission(2L, LocalDateTime.of(2026, 9, 30, 21, 0)),
+                        completeMission(1L, LocalDateTime.of(2026, 9, 30, 9, 0))
                 ));
 
         WeeklyPhotoDayResponse wednesday = homeService.getHome(EMAIL).weeklyPhotos().days().get(2);
@@ -119,11 +127,11 @@ class HomeServiceTest {
     @Test
     void 일요일까지는_같은_주이고_월요일이_되면_새_주가_시작된다() {
         homeService(LocalDateTime.of(2026, 10, 4, 23, 59)).getHome(EMAIL);
-        verify(completeMissionRepository).findAllByUserIdAndCreatedAtBetween(
+        verify(completeMissionRepository).findMonthlyRepresents(
                 1L, LocalDateTime.of(2026, 9, 28, 0, 0), LocalDateTime.of(2026, 10, 5, 0, 0));
 
         homeService(LocalDateTime.of(2026, 10, 5, 0, 0)).getHome(EMAIL);
-        verify(completeMissionRepository).findAllByUserIdAndCreatedAtBetween(
+        verify(completeMissionRepository).findMonthlyRepresents(
                 1L, LocalDateTime.of(2026, 10, 5, 0, 0), LocalDateTime.of(2026, 10, 12, 0, 0));
     }
 
@@ -240,8 +248,10 @@ class HomeServiceTest {
         Mission mission = Mission.createMission("퇴근길 한 정거장 걸어보기", "한 정거장 일찍 내려서 걸어보기", DayType.ALL, Season.ALL);
         UserMission userMission = UserMission.startMission(user, mission);
         userMission.complete(completedAt);
-        CompleteMission completeMission = CompleteMission.create(user, userMission, "record-" + id + ".jpg", "퇴근길 버스정류장", "기록 내용");
+        CompleteMission completeMission = CompleteMission.create(user, userMission, "record-" + id + ".jpg", "퇴근길 버스정류장", "기록 내용", true);
         ReflectionTestUtils.setField(completeMission, "completeMissionId", id);
+        // 기록은 완료 시점에 만들어지므로 생성 시각을 완료 시각과 같게 둠
+        ReflectionTestUtils.setField(completeMission, "createdAt", completedAt);
         return completeMission;
     }
 

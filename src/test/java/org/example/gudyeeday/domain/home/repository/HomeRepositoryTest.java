@@ -124,6 +124,6 @@ class HomeRepositoryTest {
 
     private CompleteMission persistRecord(User owner, Mission mission, LocalDateTime completedAt) {
         UserMission userMission = persistCompleted(owner, mission, completedAt);
-        return em.persist(CompleteMission.create(owner, userMission, "photo.jpg", "위치", "내용"));
+        return em.persist(CompleteMission.create(owner, userMission, "photo.jpg", "위치", "내용", false));
     }
 }
