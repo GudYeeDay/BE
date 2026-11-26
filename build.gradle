@@ -54,10 +54,11 @@ dependencies {
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1'
 
     // FCM 푸시 알림
-    implementation 'com.google.firebase:firebase-admin:9.4.3'
+    implementation 'com.google.firebase:firebase-admin:9.12.0'
 
     // Apple 로그인
     implementation 'org.springframework.security:spring-security-oauth2-jose'
+
 }
 
 tasks.named('test') {
