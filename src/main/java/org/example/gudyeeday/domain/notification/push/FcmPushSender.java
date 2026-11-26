@@ -53,7 +53,11 @@ public class FcmPushSender implements PushSender {
             if (exception != null && INVALID_TOKEN_ERRORS.contains(exception.getMessagingErrorCode())) {
                 invalidTokens.add(messages.get(i).token());
             } else {
-                log.warn("FCM 발송 실패: {}", exception != null ? exception.getMessage() : "알 수 없는 오류");
+            log.warn("FCM 발송 실패: code={}, message={}, response={}",
+                    exception != null ? exception.getMessagingErrorCode() : null,
+                    exception != null ? exception.getMessage() : "알 수 없는 오류",
+                    exception != null && exception.getHttpResponse() != null
+                            ? exception.getHttpResponse().getContent() : "");
             }
         }
 
