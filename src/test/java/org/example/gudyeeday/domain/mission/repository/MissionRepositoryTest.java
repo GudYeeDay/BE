@@ -132,6 +132,14 @@ class MissionRepositoryTest {
         assertThat(missionRepository.findRecommendCandidates(user.getId(), WEEKDAY, FALL)).containsExactly(basic);
     }
 
+    @Test
+    void 제목이_test로_시작하는_테스트_미션은_추천되지_않는다() {
+        Mission basic = persistMission(DayType.ALL, Season.ALL);
+        em.persist(Mission.createMission("[test] 테스트 미션", "설명", DayType.ALL, Season.ALL));
+
+        assertThat(missionRepository.findRecommendCandidates(user.getId(), WEEKDAY, FALL)).containsExactly(basic);
+    }
+
     private Mission persistMission(DayType dayType, Season season) {
         return em.persist(Mission.createMission("제목", "설명", dayType, season));
     }
