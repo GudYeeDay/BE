@@ -141,10 +141,16 @@ public class CompleteService {
         }
 
         Long deleteCompleteId = completeMission.getCompleteMissionId();
+        boolean wasRepresent = completeMission.isRepresent();
+        LocalDate recordDate = completeMission.getCreatedAt().toLocalDate();
 
         s3Uploader.delete(completeMission.getImageUrl());
 
         completeMissionRepository.delete(completeMission);
+
+        if(wasRepresent){
+            completeMissionRepository.findLatestByDate(user.getId(), recordDate).ifPresent(latest -> latest.updateRepresent(true));
+        }
 
         return deleteCompleteId;
 

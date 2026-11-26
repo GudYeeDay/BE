@@ -168,4 +168,18 @@ public interface CompleteMissionRepository extends JpaRepository<CompleteMission
                                                 @Param("start") LocalDateTime start,
                                                 @Param("end") LocalDateTime end);
 
+    // 기간 안에서 가장 최신 기록 1개 (createdAt이 같으면 id가 큰 것)
+    Optional<CompleteMission> findFirstByUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDescCompleteMissionIdDesc(
+            Long userId, LocalDateTime start, LocalDateTime end);
+
+    /**
+     * 특정 날짜의 가장 최신 기록 (그날 기록이 없으면 Optional.empty)
+     */
+    default Optional<CompleteMission> findLatestByDate(Long userId, LocalDate date) {
+        return findFirstByUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDescCompleteMissionIdDesc(
+                userId,
+                date.atStartOfDay(),
+                date.plusDays(1).atStartOfDay()
+        );
+    }
 }
